@@ -1,36 +1,107 @@
-// src/styles/custom.scss
-
+// src/styles/custom.scss ->>> antigoooo
 // 1. Sobrescreva variáveis antes de importar Bootstrap via `@use`
-$primary: #12BE4D;
-$secondary: #A9A9A9;
-$success: #28a745;
-$info: #0dcaf0;
-$warning: #ffc107;
-$danger: #dc3545;
+//scss padrao
+// $primary: #12BE4D;
+// $secondary: #A9A9A9;
+// $success: #28a745;
+// $info: #0dcaf0;
+// $warning: #ffc107;
+// $danger: #dc3545;
 
-$light: #f8f9fa;
-$dark: #313131;
-$white: #ffffff;
-$body-bg: $light;
-$body-color: $dark;
-$font-family-base: "Helvetica Neue", Helvetica, Arial, sans-serif;
+// $light: #f8f9fa;
+// $dark: #313131;
+// $white: #ffffff;
+// $body-bg: $light;
+// $body-color: $dark;
+// $font-family-base: "Helvetica Neue", Helvetica, Arial, sans-serif;
 
-$blue:    #0D90E1  !default;
+// $blue:    #0D90E1  !default;
+// $indigo:  #6610f2 !default;
+// $purple:  #6f42c1 !default;
+// $pink:    #d63384 !default;
+// $red:     #dc3545 !default;
+// $orange:  #fd7e14 !default;
+// $yellow:  #E1E10D  !default;
+// $green:   #198754 !default;
+// $teal:    #20c997 !default;
+// $cyan:    #0dcaf0 !default;
+// $gray:    #6c757d !default;
+
+// src/styles/custom.scss ->>> novo
+// 1. Sobrescreva variáveis antes de importar Bootstrap via `@use`
+
+// Cores Primárias (do seu CSS)
+$primary: #12BE4D;             // --bs-primary
+$primary-light: #5CE98B;       // --bs-primary-light
+$primary-dark: #0E8F3A;        // --bs-primary-dark
+$primary-contrast: #ffffff;   // --bs-primary-contrast (usado para texto em fundos primários)
+
+// Cores Secundárias (do seu CSS - tons de cinza)
+$secondary: #6c757d;           // --bs-secondary
+$secondary-light: #ced4da;     // --bs-secondary-light
+$secondary-dark: #343a40;      // --bs-secondary-dark
+
+// Cores de Destaque (do seu CSS - complementares ao verde)
+$accent: #FF6B6B;              // --bs-accent
+$accent-light: #FF9E9E;        // --bs-accent-light
+$accent-dark: #C94444;         // --bs-accent-dark
+
+// Cores Análogas (do seu CSS)
+$analogous-1: #12BEA0;         // --bs-analogous-1
+$analogous-2: #12BE18;         // --bs-analogous-2
+
+// Cores de Feedback (do seu CSS)
+$success: #12BE4D;             // --bs-success (igual ao $primary)
+$info: #1E90FF;                // --bs-info
+$warning: #FFC107;             // --bs-warning
+$danger: #E74C3C;              // --bs-danger
+
+// Cores Neutras (do seu CSS)
+$light: #f8f9fa;               // --bs-light
+$dark: #212529;                // --bs-dark
+$white: #ffffff;               // Padrão, mas alinhado com --bs-primary-contrast e --bs-bg-light
+
+// Cores de Texto (do seu CSS)
+$text-primary: $primary;       // --bs-text-primary (usando a variável $primary já definida)
+$text-secondary: $secondary;   // --bs-text-secondary (usando a variável $secondary já definida)
+$text-muted: #adb5bd;          // --bs-text-muted
+
+// Cores de Fundo (do seu CSS)
+$body-bg: #ffffff;             // --bs-bg-light (assumindo que $body-bg deve ser o fundo claro principal)
+$bg-medium: #f8f9fa;           // --bs-bg-medium
+$bg-dark: #e9ecef;             // --bs-bg-dark
+
+// Cores de Borda (do seu CSS)
+$border-color: #dee2e6;        // --bs-border-color
+$border-radius: 0.375rem;      // --bs-border-radius (isto é um valor de tamanho, não cor, mas mantido conforme seu CSS)
+
+// Cores padrão do Bootstrap (algumas podem ser sobrescritas acima, outras mantidas como padrão ou ajustadas se necessário)
+// Se uma cor do CSS mapear diretamente para uma destas, ela foi sobrescrita acima (ex: $green, $red, $yellow).
+// As demais são mantidas como padrão do Bootstrap, a menos que você queira mapear outras cores do seu CSS para elas.
+$blue:    #0D90E1 !default;    // Mantido (ou use --bs-info se preferir azul para $blue)
 $indigo:  #6610f2 !default;
 $purple:  #6f42c1 !default;
 $pink:    #d63384 !default;
-$red:     #dc3545 !default;
-$orange:  #fd7e14 !default;
-$yellow:  #E1E10D  !default;
-$green:   #198754 !default;
-$teal:    #20c997 !default;
-$cyan:    #0dcaf0 !default;
-$gray:    #6c757d !default;
+$red:     $danger !default;   // Já definido como $danger
+$orange:  #fd7e14 !default;    // Pode mapear para --bs-accent se for o laranja desejado, ou manter
+$yellow:  $warning !default; // Já definido como $warning
+$green:   $primary !default; // Já definido como $primary (ou $success)
+$teal:    #20c997 !default;    // Poderia ser $analogous-1 se preferir: $teal: $analogous-1 !default;
+$cyan:    $info !default;    // Já definido como $info (se o azul do info for o seu cyan)
+$gray:    $secondary !default; // Já definido como $secondary
+
+// Configurações Gerais
+$body-color: $dark;              // Cor padrão do texto do corpo, usando $dark do seu CSS (--bs-dark)
+$font-family-base: "Helvetica Neue", Helvetica, Arial, sans-serif; // Mantido do seu SCSS original
 
 // 2. Use o Bootstrap SCSS (precisa do includePaths configurado no Vite)
 @use "bootstrap" with (
   $primary: $primary,
+  $primary-light: $primary-light, // Adicionado
+  $primary-dark: $primary-dark,   // Adicionado
   $secondary: $secondary,
+  $secondary-light: $secondary-light, // Adicionado
+  $secondary-dark: $secondary-dark, // Adicionado
   $success: $success,
   $info: $info,
   $warning: $warning,
@@ -40,7 +111,43 @@ $gray:    #6c757d !default;
   $white: $white,
   $body-bg: $body-bg,
   $body-color: $body-color,
-  $font-family-base: $font-family-base
+  $font-family-base: $font-family-base,
+  $border-color: $border-color,     // Adicionado
+  $border-radius: $border-radius,   // Adicionado
+
+  // Mapeando algumas cores nomeadas do Bootstrap para suas novas definições, se desejado
+  // Se você quiser que as classes .text-green, .bg-green, etc., usem sua cor primária:
+  $green: $primary,
+  $red: $danger,
+  $yellow: $warning,
+  $cyan: $info, // Bootstrap usa 'cyan' para info por padrão
+  // $blue: $info, // Se quiser que $blue seja sua cor de info
+
+  // Adicionando as novas cores para que possam ser usadas com utilitários do Bootstrap se você estender o mapa de cores
+  // Nota: Isso requer mais configuração no Bootstrap para gerar classes como .text-accent, .bg-analogous-1, etc.
+  // Por padrão, o `@use "bootstrap" with (...)` apenas sobrescreve as variáveis existentes do Bootstrap.
+  // Para usar $accent, $analogous-1, etc., com classes de utilidade, você normalmente as adicionaria ao mapa $theme-colors.
+  // No entanto, definir as variáveis aqui as torna disponíveis para seus próprios estilos SCSS.
+
+  // As variáveis como $accent, $analogous-1, $text-muted, $bg-medium, $bg-dark
+  // não são diretamente consumidas pelo `@use "bootstrap" with (...)` para gerar classes
+  // de utilidade por padrão, mas você pode usá-las em seus próprios estilos SCSS.
+  // Se você quiser que o Bootstrap gere utilitários para elas, você precisaria
+  // personalizar o mapa $theme-colors do Bootstrap.
+  // Exemplo (isso iria *depois* de definir as variáveis e *antes* do @use "bootstrap"):
+  // $theme-colors: map-merge(
+  //   $theme-colors,
+  //   (
+  //     "accent": $accent,
+  //     "analogous-1": $analogous-1,
+  //     "analogous-2": $analogous-2,
+  //     "primary-light": $primary-light,
+  //     "primary-dark": $primary-dark
+  //     // e assim por diante
+  //   )
+  // );
+  // E então no @use:
+  // $theme-colors: $theme-colors
 );
 
 // 3. Importar Bootstrap Icons (isso pode ficar no seu HTML ou ser importado no JS, mas se quiser via SCSS):
