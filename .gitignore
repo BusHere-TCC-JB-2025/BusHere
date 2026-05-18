@@ -3,3 +3,4 @@ server/.env
 web/.env
 webapp/ .env
 /node_modules
+.env
