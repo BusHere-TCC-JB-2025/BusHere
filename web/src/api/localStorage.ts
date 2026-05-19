@@ -809,6 +809,87 @@ class LocalStorageDB {
       utilizationRate: (this.db.passengers.length / this.db.vehicles.reduce((sum, v) => sum + v.capacity, 0) * 100).toFixed(2)
     };
   }
+
+  // ===== AUTHENTICATION =====
+  login(email: string, password: string) {
+    // Demo mode - accept any email/password
+    // In production, validate against actual credentials
+    if (!email || !password) {
+      throw new Error('Email e senha são obrigatórios');
+    }
+
+    // Mock user data - can be customized per email
+    const user = {
+      id: 1,
+      email: email,
+      name: email.split('@')[0],
+      role: 'admin',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    };
+
+    // Generate a simple token (not secure, just for demo)
+    const token = `demo_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      token,
+      user
+    };
+  }
+
+  register(userData: { email: string; password: string; name: string; [key: string]: any }) {
+    if (!userData.email || !userData.password || !userData.name) {
+      throw new Error('Email, senha e nome são obrigatórios');
+    }
+
+    // In demo mode, just accept and create a user
+    const user = {
+      id: generateId(),
+      email: userData.email,
+      name: userData.name,
+      role: 'user',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    };
+
+    const token = `demo_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      token,
+      user
+    };
+  }
+
+  getCurrentUser(token: string) {
+    // In demo mode, extract minimal info from token
+    // In production, validate token and fetch from database
+    if (!token || !token.startsWith('demo_token_')) {
+      throw new Error('Token inválido');
+    }
+
+    return {
+      id: 1,
+      email: 'admin@bushere.com',
+      name: 'Admin',
+      role: 'admin',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    };
+  }
+
+  changePassword(email: string, oldPassword: string, newPassword: string) {
+    if (!email || !oldPassword || !newPassword) {
+      throw new Error('Email, senha antiga e nova senha são obrigatórios');
+    }
+
+    // In demo mode, just accept the change
+    return { success: true, message: 'Senha alterada com sucesso' };
+  }
+
+  logout() {
+    // No-op in localStorage mode
+    return { success: true };
+  }
 }
 
 // Exporta instância única

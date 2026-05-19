@@ -60,7 +60,7 @@ const api = {
 
     try {
       // Rotear requisições para as funções corretas do localStorage
-      return api._handleLocalStorageRequest(method, url, data);
+      return api._handleLocalStorageRequest(method, url, data, options);
     } catch (error) {
       if (isDevelopment) console.error("❌ Erro no DEMO:", url, error);
       const err = error as Error & { status?: number; data?: any };
@@ -69,7 +69,7 @@ const api = {
     }
   },
 
-  _handleLocalStorageRequest: (method: string, url: string, data: any) => {
+  _handleLocalStorageRequest: (method: string, url: string, data: any, options: RequestInit = {}) => {
     // ===== PASSENGERS =====
     if (url.startsWith('/passengers')) {
       if (method === 'GET' && url === '/passengers' && !url.includes('tipos') && !url.includes('rotas') && !url.includes('pontos')) {
@@ -301,6 +301,26 @@ const api = {
     if (url === '/database/reset' && method === 'POST') {
       db.reset();
       return { success: true };
+    }
+
+    // ===== AUTHENTICATION =====
+    if (url === '/auth/login' && method === 'POST') {
+      return db.login(data.email, data.password);
+    }
+    if (url === '/auth/register' && method === 'POST') {
+      return db.register(data);
+    }
+    if (url === '/auth/me' && method === 'GET') {
+      const headers = options.headers as Record<string, string> || {};
+      const authHeader = headers['Authorization'] || '';
+      const token = authHeader.replace('Bearer ', '');
+      return db.getCurrentUser(token || '');
+    }
+    if (url === '/auth/change-password' && method === 'POST') {
+      return db.changePassword(data.email, data.oldPassword, data.newPassword);
+    }
+    if (url === '/auth/logout' && method === 'POST') {
+      return db.logout();
     }
 
     // Route não encontrada
