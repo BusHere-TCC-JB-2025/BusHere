@@ -146,6 +146,34 @@ const INITIAL_DATA: Database = {
       type: 'regular',
       createdAt: getTimestamp(),
       updatedAt: getTimestamp()
+    },
+    {
+      id: 3,
+      name: 'José Antonio Silva',
+      cpf: '12345678901',
+      email: 'jose.silva@empresa.com',
+      phone: '11987654321',
+      address: 'Rua das Flores, 789',
+      city: 'São Paulo',
+      uf: 'SP',
+      cep: '03456-789',
+      type: 'student',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 4,
+      name: 'Ana Paula Costa',
+      cpf: '45678901234',
+      email: 'ana.costa@empresa.com',
+      phone: '11954321098',
+      address: 'Rua do Comércio, 321',
+      city: 'São Paulo',
+      uf: 'SP',
+      cep: '04567-890',
+      type: 'elderly',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
     }
   ],
   drivers: [
@@ -167,6 +195,39 @@ const INITIAL_DATA: Database = {
       cnh: 'DEF789012',
       email: 'pedro@example.com',
       phone: '11999887766',
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 3,
+      name: 'José Antonio Silva',
+      cpf: '12345678901',
+      cnh: '12345678901',
+      email: 'jose.silva@empresa.com',
+      phone: '11987654321',
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 4,
+      name: 'Maria Santos Lima',
+      cpf: '23456789012',
+      cnh: '23456789012',
+      email: 'maria.lima@empresa.com',
+      phone: '11976543210',
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 5,
+      name: 'Carlos Eduardo Souza',
+      cpf: '34567890123',
+      cnh: '34567890123',
+      email: 'carlos.souza@empresa.com',
+      phone: '11965432109',
       status: 'active',
       createdAt: getTimestamp(),
       updatedAt: getTimestamp()
@@ -192,6 +253,28 @@ const INITIAL_DATA: Database = {
       capacity: 20,
       status: 'active',
       year: 2021,
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 3,
+      plate: 'OVD6954',
+      model: 'Sprinter',
+      type: 'van',
+      capacity: 26,
+      status: 'active',
+      year: 2018,
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 4,
+      plate: 'FVI1M30',
+      model: 'Sprinter',
+      type: 'van',
+      capacity: 13,
+      status: 'maintenance',
+      year: 2010,
       createdAt: getTimestamp(),
       updatedAt: getTimestamp()
     }
@@ -229,6 +312,28 @@ const INITIAL_DATA: Database = {
       uf: 'SP',
       createdAt: getTimestamp(),
       updatedAt: getTimestamp()
+    },
+    {
+      id: 4,
+      name: 'UPA',
+      address: 'Rua Antônio Pinto Catão, 1222',
+      latitude: -22.68914562,
+      longitude: -46.98844598,
+      city: 'Jaguariúna',
+      uf: 'SP',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 5,
+      name: 'ETEC João Belarmino',
+      address: 'Rua Sete de Setembro, 299',
+      latitude: -22.70600582,
+      longitude: -46.76519494,
+      city: 'Amparo',
+      uf: 'SP',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
     }
   ],
   routes: [
@@ -251,6 +356,16 @@ const INITIAL_DATA: Database = {
       status: 'active',
       createdAt: getTimestamp(),
       updatedAt: getTimestamp()
+    },
+    {
+      id: 3,
+      name: 'Jaguariuna - ETEC Amparo',
+      code: 'R001',
+      description: 'Rota de Jaguariúna até ETEC Amparo',
+      stops: [4, 5],
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
     }
   ],
   assignments: [
@@ -259,6 +374,26 @@ const INITIAL_DATA: Database = {
       routeId: 1,
       vehicleId: 1,
       driverId: 1,
+      startDate: getTimestamp(),
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 2,
+      routeId: 2,
+      vehicleId: 2,
+      driverId: 2,
+      startDate: getTimestamp(),
+      status: 'active',
+      createdAt: getTimestamp(),
+      updatedAt: getTimestamp()
+    },
+    {
+      id: 3,
+      routeId: 3,
+      vehicleId: 3,
+      driverId: 3,
       startDate: getTimestamp(),
       status: 'active',
       createdAt: getTimestamp(),
@@ -776,14 +911,20 @@ class LocalStorageDB {
   // ===== REPORTS =====
   getStats() {
     return {
-      passengers: this.db.passengers.length,
-      drivers: this.db.drivers.length,
-      vehicles: this.db.vehicles.length,
-      stops: this.db.stops.length,
-      routes: this.db.routes.length,
-      activeRoutes: this.db.routes.filter(r => r.status === 'active').length,
-      activeVehicles: this.db.vehicles.filter(v => v.status === 'active').length,
-      activeDrivers: this.db.drivers.filter(d => d.status === 'active').length
+      data: {
+        passengers: {
+          total: this.db.passengers.length
+        },
+        drivers: {
+          total: this.db.drivers.length
+        },
+        vehicles: {
+          total: this.db.vehicles.length
+        },
+        routes: {
+          total: this.db.routes.length
+        }
+      }
     };
   }
 

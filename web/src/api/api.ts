@@ -70,110 +70,113 @@ const api = {
   },
 
   _handleLocalStorageRequest: (method: string, url: string, data: any, options: RequestInit = {}) => {
+    // Extract path without query parameters for matching
+    const urlPath = url.split('?')[0];
+
     // ===== PASSENGERS =====
-    if (url.startsWith('/passengers')) {
-      if (method === 'GET' && url === '/passengers' && !url.includes('tipos') && !url.includes('rotas') && !url.includes('pontos')) {
+    if (urlPath.startsWith('/passengers')) {
+      if (method === 'GET' && urlPath === '/passengers' && !url.includes('tipos') && !url.includes('rotas') && !url.includes('pontos')) {
         const params = new URL(`http://dummy${url}`).searchParams;
         const page = parseInt(params.get('page') || '1');
         const limit = parseInt(params.get('limit') || '10');
         const search = params.get('search') || '';
         return db.getPassengers(page, limit, search);
-      } else if (method === 'GET' && url.match(/\/passengers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const passenger = db.getPassengerById(id);
         if (!passenger) throw Object.assign(new Error('Passenger not found'), { status: 404 });
         return passenger;
-      } else if (method === 'POST' && url === '/passengers') {
+      } else if (method === 'POST' && urlPath === '/passengers') {
         return db.createPassenger(data);
-      } else if (method === 'PUT' && url.match(/\/passengers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'PUT' && urlPath.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         return db.updatePassenger(id, data);
-      } else if (method === 'DELETE' && url.match(/\/passengers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'DELETE' && urlPath.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deletePassenger(id);
         return { success: true };
-      } else if (url.endsWith('/passengers/tipos')) {
+      } else if (urlPath.endsWith('/passengers/tipos')) {
         return { types: db.getPassengerTypes() };
       }
     }
 
     // ===== DRIVERS =====
-    if (url.startsWith('/drivers')) {
-      if (method === 'GET' && url === '/drivers' && !url.includes('status')) {
+    if (urlPath.startsWith('/drivers')) {
+      if (method === 'GET' && urlPath === '/drivers' && !url.includes('status')) {
         const params = new URL(`http://dummy${url}`).searchParams;
         const page = parseInt(params.get('page') || '1');
         const limit = parseInt(params.get('limit') || '10');
         const search = params.get('search') || '';
         return db.getDrivers(page, limit, search);
-      } else if (method === 'GET' && url.match(/\/drivers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const driver = db.getDriverById(id);
         if (!driver) throw Object.assign(new Error('Driver not found'), { status: 404 });
         return driver;
-      } else if (method === 'POST' && url === '/drivers') {
+      } else if (method === 'POST' && urlPath === '/drivers') {
         return db.createDriver(data);
-      } else if (method === 'PUT' && url.match(/\/drivers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'PUT' && urlPath.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         return db.updateDriver(id, data);
-      } else if (method === 'DELETE' && url.match(/\/drivers\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'DELETE' && urlPath.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deleteDriver(id);
         return { success: true };
-      } else if (url.endsWith('/drivers/status')) {
+      } else if (urlPath.endsWith('/drivers/status')) {
         return { status: db.getDriverStatus() };
       }
     }
 
     // ===== VEHICLES =====
-    if (url.startsWith('/vehicles')) {
-      if (method === 'GET' && url === '/vehicles' && !url.includes('status') && !url.includes('types')) {
+    if (urlPath.startsWith('/vehicles')) {
+      if (method === 'GET' && urlPath === '/vehicles' && !url.includes('status') && !url.includes('types')) {
         const params = new URL(`http://dummy${url}`).searchParams;
         const page = parseInt(params.get('page') || '1');
         const limit = parseInt(params.get('limit') || '10');
         const search = params.get('search') || '';
         return db.getVehicles(page, limit, search);
-      } else if (method === 'GET' && url.match(/\/vehicles\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const vehicle = db.getVehicleById(id);
         if (!vehicle) throw Object.assign(new Error('Vehicle not found'), { status: 404 });
         return vehicle;
-      } else if (method === 'POST' && url === '/vehicles') {
+      } else if (method === 'POST' && urlPath === '/vehicles') {
         return db.createVehicle(data);
-      } else if (method === 'PUT' && url.match(/\/vehicles\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'PUT' && urlPath.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         return db.updateVehicle(id, data);
-      } else if (method === 'DELETE' && url.match(/\/vehicles\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'DELETE' && urlPath.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deleteVehicle(id);
         return { success: true };
-      } else if (url.endsWith('/vehicles/types')) {
+      } else if (urlPath.endsWith('/vehicles/types')) {
         return { types: db.getVehicleTypes() };
-      } else if (url.endsWith('/vehicles/status')) {
+      } else if (urlPath.endsWith('/vehicles/status')) {
         return { status: db.getVehicleStatus() };
       }
     }
 
     // ===== STOPS =====
-    if (url.startsWith('/stops')) {
-      if (method === 'GET' && url === '/stops') {
+    if (urlPath.startsWith('/stops')) {
+      if (method === 'GET' && urlPath === '/stops') {
         return db.getStops();
-      } else if (method === 'GET' && url === '/stops/stats') {
+      } else if (method === 'GET' && urlPath === '/stops/stats') {
         return db.getStopsStats();
-      } else if (method === 'GET' && url.match(/\/stops\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/stops\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const stop = db.getStopById(id);
         if (!stop) throw Object.assign(new Error('Stop not found'), { status: 404 });
         return stop;
-      } else if (method === 'POST' && url === '/stops') {
+      } else if (method === 'POST' && urlPath === '/stops') {
         return db.createStop(data);
-      } else if (method === 'PUT' && url.match(/\/stops\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'PUT' && urlPath.match(/\/stops\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         return db.updateStop(id, data);
-      } else if (method === 'DELETE' && url.match(/\/stops\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'DELETE' && urlPath.match(/\/stops\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deleteStop(id);
         return { success: true };
-      } else if (url.includes('/stops/search')) {
+      } else if (urlPath.includes('/stops/search')) {
         const params = new URL(`http://dummy${url}`).searchParams;
         const name = params.get('name') || '';
         return db.searchStops(name);
@@ -181,53 +184,53 @@ const api = {
     }
 
     // ===== ROUTES =====
-    if (url.startsWith('/routes')) {
-      if (method === 'GET' && url === '/routes' && !url.includes('status') && !url.includes('stops') && !url.includes('assignments')) {
+    if (urlPath.startsWith('/routes')) {
+      if (method === 'GET' && urlPath === '/routes' && !url.includes('status') && !url.includes('stops') && !url.includes('assignments')) {
         const params = new URL(`http://dummy${url}`).searchParams;
         const page = parseInt(params.get('page') || '1');
         const limit = parseInt(params.get('limit') || '10');
         const search = params.get('search') || '';
         return db.getRoutes(page, limit, search);
       } else if (method === 'GET' && url.includes('includeStops=true')) {
-        const id = parseInt(url.split('/')[2]);
+        const id = parseInt(urlPath.split('/')[2]);
         return db.getRouteByIdWithStops(id);
-      } else if (method === 'GET' && url.match(/\/routes\/\d+$/) && !url.includes('assignments')) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/routes\/\d+$/) && !url.includes('assignments')) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const route = db.getRouteById(id);
         if (!route) throw Object.assign(new Error('Route not found'), { status: 404 });
         return route;
-      } else if (method === 'POST' && url === '/routes') {
+      } else if (method === 'POST' && urlPath === '/routes') {
         return db.createRoute(data);
-      } else if (method === 'POST' && url === '/routes/new') {
+      } else if (method === 'POST' && urlPath === '/routes/new') {
         return db.createRoute(data);
-      } else if (method === 'PUT' && url.match(/\/routes\/\d+$/) && !url.includes('with-stops')) {
-        const id = parseInt(url.split('/')[2]);
+      } else if (method === 'PUT' && urlPath.match(/\/routes\/\d+$/) && !url.includes('with-stops')) {
+        const id = parseInt(urlPath.split('/')[2]);
         return db.updateRoute(id, data);
       } else if (method === 'PUT' && url.includes('/with-stops')) {
-        const id = parseInt(url.split('/')[2]);
+        const id = parseInt(urlPath.split('/')[2]);
         return db.updateRoute(id, data);
-      } else if (method === 'DELETE' && url.match(/\/routes\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'DELETE' && urlPath.match(/\/routes\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deleteRoute(id);
         return { success: true };
-      } else if (url.endsWith('/routes/status')) {
+      } else if (urlPath.endsWith('/routes/status')) {
         return { status: db.getRouteStatus() };
-      } else if (url.match(/\/routes\/\d+\/stops$/)) {
-        const id = parseInt(url.split('/')[2]);
+      } else if (urlPath.match(/\/routes\/\d+\/stops$/)) {
+        const id = parseInt(urlPath.split('/')[2]);
         return db.getRouteStops(id);
-      } else if (url.includes('/routes/') && url.includes('/assignments') && method === 'GET' && !url.match(/\/assignments\/\d+$/)) {
-        const routeId = parseInt(url.split('/')[2]);
+      } else if (url.includes('/routes/') && url.includes('/assignments') && method === 'GET' && !urlPath.match(/\/assignments\/\d+$/)) {
+        const routeId = parseInt(urlPath.split('/')[2]);
         return db.getAssignments(routeId);
       } else if (url.includes('/routes/') && url.includes('/assignments') && method === 'POST') {
-        const routeId = parseInt(url.split('/')[2]);
+        const routeId = parseInt(urlPath.split('/')[2]);
         return db.createAssignment(routeId, data);
       } else if (url.includes('/assignments/') && method === 'PUT') {
-        const parts = url.split('/');
+        const parts = urlPath.split('/');
         const routeId = parseInt(parts[2]);
         const assignmentId = parseInt(parts[4]);
         return db.updateAssignment(routeId, assignmentId, data);
       } else if (url.includes('/assignments/') && method === 'DELETE') {
-        const parts = url.split('/');
+        const parts = urlPath.split('/');
         const routeId = parseInt(parts[2]);
         const assignmentId = parseInt(parts[4]);
         db.deleteAssignment(routeId, assignmentId);
@@ -236,45 +239,45 @@ const api = {
     }
 
     // ===== REPORTS =====
-    if (url === '/reports/stats' && method === 'GET') {
+    if (urlPath === '/reports/stats' && method === 'GET') {
       return db.getStats();
     }
-    if (url === '/reports/charts' && method === 'GET') {
+    if (urlPath === '/reports/charts' && method === 'GET') {
       return db.getCharts();
     }
-    if (url === '/reports/utilization' && method === 'GET') {
+    if (urlPath === '/reports/utilization' && method === 'GET') {
       return db.getUtilization();
     }
 
     // ===== NOTIFICATIONS =====
-    if (url.startsWith('/notifications')) {
-      if (method === 'GET' && url === '/notifications') {
+    if (urlPath.startsWith('/notifications')) {
+      if (method === 'GET' && urlPath === '/notifications') {
         return db.getNotifications();
-      } else if (method === 'GET' && url === '/notifications/scopes') {
+      } else if (method === 'GET' && urlPath === '/notifications/scopes') {
         return { scopes: db.getNotificationScopes() };
-      } else if (method === 'GET' && url.match(/\/notifications\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/notifications\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const notification = db.getNotifications().find(n => n.id === id);
         if (!notification) throw Object.assign(new Error('Notification not found'), { status: 404 });
         return notification;
       } else if (method === 'POST') {
         return db.createNotification(data);
       } else if (method === 'PUT') {
-        const id = parseInt(url.split('/').pop() || '0');
+        const id = parseInt(urlPath.split('/').pop() || '0');
         return db.updateNotification(id, data);
       } else if (method === 'DELETE') {
-        const id = parseInt(url.split('/').pop() || '0');
+        const id = parseInt(urlPath.split('/').pop() || '0');
         db.deleteNotification(id);
         return { success: true };
       }
     }
 
     // ===== INVITES =====
-    if (url.startsWith('/invites')) {
-      if (method === 'GET' && url === '/invites') {
+    if (urlPath.startsWith('/invites')) {
+      if (method === 'GET' && urlPath === '/invites') {
         return db.getInvites();
-      } else if (method === 'GET' && url.match(/\/invites\/\d+$/)) {
-        const id = parseInt(url.split('/').pop() || '0');
+      } else if (method === 'GET' && urlPath.match(/\/invites\/\d+$/)) {
+        const id = parseInt(urlPath.split('/').pop() || '0');
         const invite = db.getInviteById(id);
         if (!invite) throw Object.assign(new Error('Invite not found'), { status: 404 });
         return invite;
@@ -284,47 +287,59 @@ const api = {
     }
 
     // ===== ACTIVITY LOG =====
-    if (url === '/lastChanges' && method === 'GET') {
+    if (urlPath === '/lastChanges' && method === 'GET') {
       const params = new URL(`http://dummy${url}`).searchParams;
       const limit = parseInt(params.get('limit') || '100');
       return db.getRecentActivity(limit);
     }
 
     // ===== DATABASE OPERATIONS (DEMO) =====
-    if (url === '/database/export' && method === 'GET') {
+    if (urlPath === '/database/export' && method === 'GET') {
       return db.export();
     }
-    if (url === '/database/import' && method === 'POST') {
+    if (urlPath === '/database/import' && method === 'POST') {
       db.import(data.data);
       return { success: true };
     }
-    if (url === '/database/reset' && method === 'POST') {
+    if (urlPath === '/database/reset' && method === 'POST') {
       db.reset();
       return { success: true };
     }
 
-    // ===== AUTHENTICATION =====
-    if (url === '/auth/login' && method === 'POST') {
+    // ===== ENTERPRISE USERS =====
+    if (urlPath.startsWith('/enterpriseUsers')) {
+      if (method === 'GET' && urlPath.match(/\/enterpriseUsers\/\d+$/)) {
+        // Mock response for enterprise users
+        const id = parseInt(urlPath.split('/').pop() || '0');
+        return {
+          id: id,
+          nome: 'Admin User',
+          email: 'admin@bushere.com',
+          role: 'admin'
+        };
+      }
+    }
+    if (urlPath === '/auth/login' && method === 'POST') {
       return db.login(data.email, data.password);
     }
-    if (url === '/auth/register' && method === 'POST') {
+    if (urlPath === '/auth/register' && method === 'POST') {
       return db.register(data);
     }
-    if (url === '/auth/me' && method === 'GET') {
+    if (urlPath === '/auth/me' && method === 'GET') {
       const headers = options.headers as Record<string, string> || {};
       const authHeader = headers['Authorization'] || '';
       const token = authHeader.replace('Bearer ', '');
       return db.getCurrentUser(token || '');
     }
-    if (url === '/auth/change-password' && method === 'POST') {
+    if (urlPath === '/auth/change-password' && method === 'POST') {
       return db.changePassword(data.email, data.oldPassword, data.newPassword);
     }
-    if (url === '/auth/logout' && method === 'POST') {
+    if (urlPath === '/auth/logout' && method === 'POST') {
       return db.logout();
     }
 
     // Route não encontrada
-    throw Object.assign(new Error(`Route not found: ${method} ${url}`), { status: 404 });
+    throw Object.assign(new Error(`Route not found: ${method} ${urlPath}`), { status: 404 });
   },
 
   get: (url, options?) => api._request('GET', url, null, options),
