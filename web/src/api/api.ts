@@ -1,100 +1,312 @@
 import { findStateByLabel } from "@shared/brazilianStates";
+import { db } from "./localStorage";
 
 function getBearerToken() {
   const token = localStorage.getItem('token');
   return token ? `Bearer ${token}` : null;
 }
 
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/enterprise';
-
-// Sistema de logging otimizado
+// ===== MODO DEMO - Substituir requisições HTTP por localStorage =====
+const USE_LOCALSTORAGE = true;
 const isDevelopment = import.meta.env.DEV;
-const requestCache = new Set<string>();
-const MAX_CACHE_SIZE = 100;
 
-const shouldLogRequest = (url: string, method: string): boolean => {
-  if (!isDevelopment) return false;
-  
-  // Não loga requisições repetitivas muito frequentes
-  const requestKey = `${method}:${url}`;
-  if (requestCache.has(requestKey)) return false;
-  
-  // Adiciona ao cache e limpa se necessário
-  requestCache.add(requestKey);
-  if (requestCache.size > MAX_CACHE_SIZE) {
-    requestCache.clear();
-  }
-  
-  return true;
-};
+// Simula delay de rede para melhor UX
+const simulateNetworkDelay = () => new Promise(r => setTimeout(r, 100));
 
 const api = {
   _request: async (method: string, url: string, data: any = null, options: RequestInit = {}) => {
-    const token = getBearerToken(); // Obtém o token a cada requisição
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}) // Mantém quaisquer headers passados explicitamente
-    };
+    if (!USE_LOCALSTORAGE) {
+      // Fallback para HTTP (mantém compatibilidade)
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/enterprise';
+      const token = getBearerToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      };
+      if (token) headers['Authorization'] = token;
 
-    if (token) {
-      headers['Authorization'] = token; // Token já vem com "Bearer " do getBearerToken()
+      const config = { method, headers, ...options };
+      if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+        config.body = JSON.stringify(data);
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}${url}`, config);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: response.statusText }));
+          const error = new Error(errorData.error || errorData.message || 'Ocorreu um erro na requisição') as Error & { status: number; data: any };
+          error.status = response.status;
+          error.data = errorData;
+          throw error;
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          return response.json();
+        } else {
+          return response.text();
+        }
+      } catch (error) {
+        if (isDevelopment) console.error("❌ Erro na requisição:", url, error);
+        throw error;
+      }
     }
 
-    const config = {
-      method,
-      headers,
-      ...options, // Permite sobrescrever outras opções (mode, cache, etc.)
-    };
+    // ===== MODO DEMO ATIVO - Usar localStorage =====
+    await simulateNetworkDelay(); // Simula latência de rede
 
-    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-      config.body = JSON.stringify(data);
+    if (isDevelopment) {
+      console.log(`📦 DEMO ${method} ${url}`, { data: data ? 'Dados enviados' : 'Sem dados' });
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}${url}`, config);
-      
-      // Log otimizado - só em desenvolvimento e evita repetições
-      if (shouldLogRequest(url, method)) {
-        console.log(`🌐 API ${method} ${url}`, {
-          status: response.status,
-          ok: response.ok,
-          data: data ? 'Dados enviados' : 'Sem dados'
-        });
-      }
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        const error = new Error(errorData.error || errorData.message || 'Ocorreu um erro na requisição') as Error & { status: number; data: any };
-        error.status = response.status;
-        error.data = errorData;
-        
-        // Log de erro otimizado
-        if (response.status === 401) {
-          console.warn('🔒 Unauthorized: Token inválido ou expirado');
-        } else if (isDevelopment) {
-          console.error(`❌ API Error ${response.status}: ${url}`, errorData);
-        }
-        throw error;
-      }
-
-      // Tenta retornar JSON, mas se não for um JSON válido, retorna o texto ou null
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        return response.json();
-      } else {
-        return response.text(); 
-      }
-
+      // Rotear requisições para as funções corretas do localStorage
+      return api._handleLocalStorageRequest(method, url, data);
     } catch (error) {
-      // Log de erro otimizado - só em desenvolvimento
-      if (isDevelopment) {
-        console.error("❌ Erro na requisição:", url, error);
-      }
-      throw error; // da erro denovo para poder ser tratado fora daqui
+      if (isDevelopment) console.error("❌ Erro no DEMO:", url, error);
+      const err = error as Error & { status?: number; data?: any };
+      if (!err.status) err.status = 500;
+      throw err;
     }
   },
-  
+
+  _handleLocalStorageRequest: (method: string, url: string, data: any) => {
+    // ===== PASSENGERS =====
+    if (url.startsWith('/passengers')) {
+      if (method === 'GET' && url === '/passengers' && !url.includes('tipos') && !url.includes('rotas') && !url.includes('pontos')) {
+        const params = new URL(`http://dummy${url}`).searchParams;
+        const page = parseInt(params.get('page') || '1');
+        const limit = parseInt(params.get('limit') || '10');
+        const search = params.get('search') || '';
+        return db.getPassengers(page, limit, search);
+      } else if (method === 'GET' && url.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const passenger = db.getPassengerById(id);
+        if (!passenger) throw Object.assign(new Error('Passenger not found'), { status: 404 });
+        return passenger;
+      } else if (method === 'POST' && url === '/passengers') {
+        return db.createPassenger(data);
+      } else if (method === 'PUT' && url.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        return db.updatePassenger(id, data);
+      } else if (method === 'DELETE' && url.match(/\/passengers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deletePassenger(id);
+        return { success: true };
+      } else if (url.endsWith('/passengers/tipos')) {
+        return { types: db.getPassengerTypes() };
+      }
+    }
+
+    // ===== DRIVERS =====
+    if (url.startsWith('/drivers')) {
+      if (method === 'GET' && url === '/drivers' && !url.includes('status')) {
+        const params = new URL(`http://dummy${url}`).searchParams;
+        const page = parseInt(params.get('page') || '1');
+        const limit = parseInt(params.get('limit') || '10');
+        const search = params.get('search') || '';
+        return db.getDrivers(page, limit, search);
+      } else if (method === 'GET' && url.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const driver = db.getDriverById(id);
+        if (!driver) throw Object.assign(new Error('Driver not found'), { status: 404 });
+        return driver;
+      } else if (method === 'POST' && url === '/drivers') {
+        return db.createDriver(data);
+      } else if (method === 'PUT' && url.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        return db.updateDriver(id, data);
+      } else if (method === 'DELETE' && url.match(/\/drivers\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deleteDriver(id);
+        return { success: true };
+      } else if (url.endsWith('/drivers/status')) {
+        return { status: db.getDriverStatus() };
+      }
+    }
+
+    // ===== VEHICLES =====
+    if (url.startsWith('/vehicles')) {
+      if (method === 'GET' && url === '/vehicles' && !url.includes('status') && !url.includes('types')) {
+        const params = new URL(`http://dummy${url}`).searchParams;
+        const page = parseInt(params.get('page') || '1');
+        const limit = parseInt(params.get('limit') || '10');
+        const search = params.get('search') || '';
+        return db.getVehicles(page, limit, search);
+      } else if (method === 'GET' && url.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const vehicle = db.getVehicleById(id);
+        if (!vehicle) throw Object.assign(new Error('Vehicle not found'), { status: 404 });
+        return vehicle;
+      } else if (method === 'POST' && url === '/vehicles') {
+        return db.createVehicle(data);
+      } else if (method === 'PUT' && url.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        return db.updateVehicle(id, data);
+      } else if (method === 'DELETE' && url.match(/\/vehicles\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deleteVehicle(id);
+        return { success: true };
+      } else if (url.endsWith('/vehicles/types')) {
+        return { types: db.getVehicleTypes() };
+      } else if (url.endsWith('/vehicles/status')) {
+        return { status: db.getVehicleStatus() };
+      }
+    }
+
+    // ===== STOPS =====
+    if (url.startsWith('/stops')) {
+      if (method === 'GET' && url === '/stops') {
+        return db.getStops();
+      } else if (method === 'GET' && url === '/stops/stats') {
+        return db.getStopsStats();
+      } else if (method === 'GET' && url.match(/\/stops\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const stop = db.getStopById(id);
+        if (!stop) throw Object.assign(new Error('Stop not found'), { status: 404 });
+        return stop;
+      } else if (method === 'POST' && url === '/stops') {
+        return db.createStop(data);
+      } else if (method === 'PUT' && url.match(/\/stops\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        return db.updateStop(id, data);
+      } else if (method === 'DELETE' && url.match(/\/stops\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deleteStop(id);
+        return { success: true };
+      } else if (url.includes('/stops/search')) {
+        const params = new URL(`http://dummy${url}`).searchParams;
+        const name = params.get('name') || '';
+        return db.searchStops(name);
+      }
+    }
+
+    // ===== ROUTES =====
+    if (url.startsWith('/routes')) {
+      if (method === 'GET' && url === '/routes' && !url.includes('status') && !url.includes('stops') && !url.includes('assignments')) {
+        const params = new URL(`http://dummy${url}`).searchParams;
+        const page = parseInt(params.get('page') || '1');
+        const limit = parseInt(params.get('limit') || '10');
+        const search = params.get('search') || '';
+        return db.getRoutes(page, limit, search);
+      } else if (method === 'GET' && url.includes('includeStops=true')) {
+        const id = parseInt(url.split('/')[2]);
+        return db.getRouteByIdWithStops(id);
+      } else if (method === 'GET' && url.match(/\/routes\/\d+$/) && !url.includes('assignments')) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const route = db.getRouteById(id);
+        if (!route) throw Object.assign(new Error('Route not found'), { status: 404 });
+        return route;
+      } else if (method === 'POST' && url === '/routes') {
+        return db.createRoute(data);
+      } else if (method === 'POST' && url === '/routes/new') {
+        return db.createRoute(data);
+      } else if (method === 'PUT' && url.match(/\/routes\/\d+$/) && !url.includes('with-stops')) {
+        const id = parseInt(url.split('/')[2]);
+        return db.updateRoute(id, data);
+      } else if (method === 'PUT' && url.includes('/with-stops')) {
+        const id = parseInt(url.split('/')[2]);
+        return db.updateRoute(id, data);
+      } else if (method === 'DELETE' && url.match(/\/routes\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deleteRoute(id);
+        return { success: true };
+      } else if (url.endsWith('/routes/status')) {
+        return { status: db.getRouteStatus() };
+      } else if (url.match(/\/routes\/\d+\/stops$/)) {
+        const id = parseInt(url.split('/')[2]);
+        return db.getRouteStops(id);
+      } else if (url.includes('/routes/') && url.includes('/assignments') && method === 'GET' && !url.match(/\/assignments\/\d+$/)) {
+        const routeId = parseInt(url.split('/')[2]);
+        return db.getAssignments(routeId);
+      } else if (url.includes('/routes/') && url.includes('/assignments') && method === 'POST') {
+        const routeId = parseInt(url.split('/')[2]);
+        return db.createAssignment(routeId, data);
+      } else if (url.includes('/assignments/') && method === 'PUT') {
+        const parts = url.split('/');
+        const routeId = parseInt(parts[2]);
+        const assignmentId = parseInt(parts[4]);
+        return db.updateAssignment(routeId, assignmentId, data);
+      } else if (url.includes('/assignments/') && method === 'DELETE') {
+        const parts = url.split('/');
+        const routeId = parseInt(parts[2]);
+        const assignmentId = parseInt(parts[4]);
+        db.deleteAssignment(routeId, assignmentId);
+        return { success: true };
+      }
+    }
+
+    // ===== REPORTS =====
+    if (url === '/reports/stats' && method === 'GET') {
+      return db.getStats();
+    }
+    if (url === '/reports/charts' && method === 'GET') {
+      return db.getCharts();
+    }
+    if (url === '/reports/utilization' && method === 'GET') {
+      return db.getUtilization();
+    }
+
+    // ===== NOTIFICATIONS =====
+    if (url.startsWith('/notifications')) {
+      if (method === 'GET' && url === '/notifications') {
+        return db.getNotifications();
+      } else if (method === 'GET' && url === '/notifications/scopes') {
+        return { scopes: db.getNotificationScopes() };
+      } else if (method === 'GET' && url.match(/\/notifications\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const notification = db.getNotifications().find(n => n.id === id);
+        if (!notification) throw Object.assign(new Error('Notification not found'), { status: 404 });
+        return notification;
+      } else if (method === 'POST') {
+        return db.createNotification(data);
+      } else if (method === 'PUT') {
+        const id = parseInt(url.split('/').pop() || '0');
+        return db.updateNotification(id, data);
+      } else if (method === 'DELETE') {
+        const id = parseInt(url.split('/').pop() || '0');
+        db.deleteNotification(id);
+        return { success: true };
+      }
+    }
+
+    // ===== INVITES =====
+    if (url.startsWith('/invites')) {
+      if (method === 'GET' && url === '/invites') {
+        return db.getInvites();
+      } else if (method === 'GET' && url.match(/\/invites\/\d+$/)) {
+        const id = parseInt(url.split('/').pop() || '0');
+        const invite = db.getInviteById(id);
+        if (!invite) throw Object.assign(new Error('Invite not found'), { status: 404 });
+        return invite;
+      } else if (method === 'POST') {
+        return db.createInvite(data);
+      }
+    }
+
+    // ===== ACTIVITY LOG =====
+    if (url === '/lastChanges' && method === 'GET') {
+      const params = new URL(`http://dummy${url}`).searchParams;
+      const limit = parseInt(params.get('limit') || '100');
+      return db.getRecentActivity(limit);
+    }
+
+    // ===== DATABASE OPERATIONS (DEMO) =====
+    if (url === '/database/export' && method === 'GET') {
+      return db.export();
+    }
+    if (url === '/database/import' && method === 'POST') {
+      db.import(data.data);
+      return { success: true };
+    }
+    if (url === '/database/reset' && method === 'POST') {
+      db.reset();
+      return { success: true };
+    }
+
+    // Route não encontrada
+    throw Object.assign(new Error(`Route not found: ${method} ${url}`), { status: 404 });
+  },
+
   get: (url, options?) => api._request('GET', url, null, options),
   post: (url, data?, options?) => api._request('POST', url, data, options),
   put: (url, data, options?) => api._request('PUT', url, data, options),
@@ -138,14 +350,14 @@ const api = {
       return api.get('/passengers/tipos');
     },
 
-    // Buscar rotas disponíveis
+    // Buscar rotas disponíveis (retorna lista de rotas)
     getRoutes: () => {
-      return api.get('/passengers/rotas');
+      return api.get('/routes');
     },
 
     // Buscar pontos disponíveis
     getStops: () => {
-      return api.get('/passengers/pontos');
+      return api.get('/stops');
     },
 
     // Buscar dados de endereço por CEP

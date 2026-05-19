@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import PopUpComponent from "../components/core/feedback/PopUpComponent";
 import { useAuth } from "../context/authContext";
 import api from "../api/api";
+import "./SettingsPage.scss";
 
 // Componentes reutilizáveis
 import PageHeader from "../components/features/settings/PageHeader";
@@ -11,6 +12,8 @@ import SettingSection from "../components/features/settings/SettingSection";
 import SettingItem from "../components/features/settings/SettingItem";
 import SystemInfo from "../components/features/settings/SystemInfo";
 import SettingsActions from "../components/features/settings/SettingsActions";
+import DemoDatabase from "../components/features/settings/DemoDatabase";
+import DemoReset from "../components/features/settings/DemoReset";
 
 function Settings({ pageFunctions, isDark, setIsDark }) {
   const { user, login, logout, isAuthenticated } = useAuth();
@@ -172,20 +175,32 @@ function Settings({ pageFunctions, isDark, setIsDark }) {
             ))}
           </SettingSection>
 
-          <button
-            onClick={async () => console.log(await api.get("/database/export"))}
+          {/* Demo Tools Section */}
+          <SettingSection
+            title="Ferramentas da Demo"
+            description="Controle o banco de dados para testes"
+            icon="bi-tools"
+            iconBg="bg-info"
+            animationDelay="0.5s"
           >
-            Exportar Dados
-          </button>
-
-          <button
-            onClick={async () => {
-              const data = prompt("entre com o JSON")
-              await api.post("/database/import", { data: JSON.parse(data) })
-            }}
-          >
-            Importar Dados
-          </button>
+            <div className="demo-tools-container">
+              <div className="demo-tool-item">
+                <div className="tool-info">
+                  <h4>Visualizar Banco de Dados</h4>
+                  <p>Veja o conteúdo completo do banco de dados em modo resumido ou JSON</p>
+                </div>
+                <DemoDatabase />
+              </div>
+              
+              <div className="demo-tool-item">
+                <div className="tool-info">
+                  <h4>Resetar Dados</h4>
+                  <p>Reinicialize o banco com dados padrão (irá perder todas as mudanças)</p>
+                </div>
+                <DemoReset />
+              </div>
+            </div>
+          </SettingSection>
 
           {/* Privacy Settings Section
           <SettingSection
