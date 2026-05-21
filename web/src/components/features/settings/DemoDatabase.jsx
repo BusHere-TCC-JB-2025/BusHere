@@ -1,5 +1,5 @@
 import { useState } from "react";
-import api from "../../../api/api";
+import { db } from "../../../api/localStorage";
 import "./DemoDatabase.scss";
 
 function DemoDatabase() {
@@ -11,7 +11,7 @@ function DemoDatabase() {
   const openDatabaseViewer = async () => {
     setLoading(true);
     try {
-      const data = await api.get("/database/export");
+      const data = db.export();
       setDatabaseData(data);
       setIsOpen(true);
     } catch (error) {

@@ -396,10 +396,15 @@ function InviteForm({ onInviteCreated, onReset }) {
 }
 
 function InvitePopup({ close }) {
-    const [invites, setInvites] = useState([]);
+     const [invites, setInvites] = useState([]);
     const [activeTab, setActiveTab] = useState("create"); // Inicia na aba de criar
     const { showSuccess, showError } = useNotification();
     const formResetRef = useRef(null);
+
+    // Mostrar alerta ao abrir o modal
+    useEffect(() => {
+        alert("A função de enviar convites não está disponível na demo");
+    }, []);
 
     const fetchInvites = async () => {
         try {

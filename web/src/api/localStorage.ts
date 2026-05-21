@@ -730,6 +730,21 @@ class LocalStorageDB {
     return this.db.routeStops.filter(rs => rs.rota_id === routeId);
   }
 
+  getRouteByIdWithStops(id: number) {
+    const route = this.db.routes.find(r => r.rota_id === id);
+    if (!route) throw new Error(`Route ${id} not found`);
+
+    const stopsData = this.db.routeStops
+      .filter(rs => rs.rota_id === id)
+      .sort((a, b) => a.ordem - b.ordem)
+      .map(rs => this.db.stops.find(s => s.ponto_id === rs.ponto_id));
+
+    return {
+      ...route,
+      stopsData,
+    };
+  }
+
   // ===== PASSENGERS =====
   getPassengers(page = 1, limit = 10, search = ''): PaginatedResponse<Passenger> {
     let filtered = [...this.db.passengers];
@@ -791,10 +806,13 @@ class LocalStorageDB {
 
   logActivity(action: string, entity: string, entityId: number) {
     this.db.activityLog.push({
-      id: Math.max(...this.db.activityLog.map(a => a.id), 0) + 1,
-      action,
-      entity,
-      entityId,
+      mudanca_id: Math.max(...this.db.activityLog.map(a => a.mudanca_id || 0), 0) + 1,
+      usuario_id: 1,
+      tabela: entity,
+      registro_id: entityId,
+      operacao: action,
+      dados_antigos: null,
+      dados_novos: null,
       timestamp: getTimestamp()
     });
 
@@ -863,6 +881,351 @@ class LocalStorageDB {
   logout() {
     return { success: true };
   }
+
+  // ===== MISSING STATUS/TYPE METHODS =====
+  getDriverStatus() {
+    return [
+      { status_motorista_id: DriverStatus.ATIVO, nome: 'Ativo' },
+      { status_motorista_id: DriverStatus.FERIAS, nome: 'Férias' },
+      { status_motorista_id: DriverStatus.AFASTADO, nome: 'Afastado' },
+      { status_motorista_id: DriverStatus.INATIVO, nome: 'Inativo' }
+    ];
+  }
+
+  getVehicleStatus() {
+    return [
+      { status_veiculo_id: VehicleStatus.EM_OPERACAO, nome: 'Em Operação' },
+      { status_veiculo_id: VehicleStatus.EM_MANUTENCAO, nome: 'Em Manutenção' },
+      { status_veiculo_id: VehicleStatus.INATIVO, nome: 'Inativo' }
+    ];
+  }
+
+  getVehicleTypes() {
+    return [
+      { tipo_veiculo_id: VehicleType.ONIBUS, nome: 'Ônibus' },
+      { tipo_veiculo_id: VehicleType.MICROONIBUS, nome: 'Microônibus' },
+      { tipo_veiculo_id: VehicleType.VAN, nome: 'Van' }
+    ];
+  }
+
+  getRouteStatus() {
+    return [
+      { status_rota_id: RouteStatus.ATIVA, nome: 'Ativa' },
+      { status_rota_id: RouteStatus.INATIVA, nome: 'Inativa' },
+      { status_rota_id: RouteStatus.EM_PLANEJAMENTO, nome: 'Em Planejamento' }
+    ];
+  }
+
+  getPassengerTypes() {
+    return [
+      { tipo_passageiro_id: PassengerType.ESTUDANTE, nome: 'Estudante' },
+      { tipo_passageiro_id: PassengerType.CORPORATIVO, nome: 'Corporativo' }
+    ];
+  }
+
+  getStopsStats() {
+    return {
+      data: {
+        total: this.db.stops.length,
+        ativo: this.db.stops.filter(s => s.ativo !== false).length,
+        inativo: this.db.stops.filter(s => s.ativo === false).length
+      }
+    };
+  }
+
+  searchStops(name: string) {
+    const searchLower = name.toLowerCase();
+    return this.db.stops.filter(s =>
+      s.nome.toLowerCase().includes(searchLower) ||
+      s.bairro.toLowerCase().includes(searchLower) ||
+      s.cidade.toLowerCase().includes(searchLower)
+    );
+  }
+
+  searchPassengers(name: string) {
+    const searchLower = name.toLowerCase();
+    return this.db.passengers.filter(p =>
+      p.nome_completo.toLowerCase().includes(searchLower) ||
+      p.cpf.includes(name) ||
+      p.email.toLowerCase().includes(searchLower)
+    );
+  }
+
+  // ===== ASSIGNMENTS (DRIVER/VEHICLE/ROUTE ASSIGNMENTS) =====
+  getAssignments(routeId: number) {
+    // Initialize assignments table if not exists
+    if (!this.db.assignments) {
+      this.db.assignments = [];
+    }
+    return this.db.assignments.filter(a => a.rota_id === routeId);
+  }
+
+  createAssignment(routeId: number, data: any) {
+    if (!this.db.assignments) {
+      this.db.assignments = [];
+    }
+    const assignment = {
+      escala_id: Math.max(...this.db.assignments.map(a => a.escala_id || 0), 0) + 1,
+      rota_id: routeId,
+      motorista_id: data.motorista_id,
+      veiculo_id: data.veiculo_id,
+      data_viagem: data.data_viagem,
+      horario_saida: data.horario_saida,
+      horario_chegada: data.horario_chegada,
+      status: data.status || 'planejada',
+      criacao: getTimestamp(),
+      atualizacao: getTimestamp()
+    };
+    this.db.assignments.push(assignment);
+    this.save();
+    return assignment;
+  }
+
+  updateAssignment(routeId: number, assignmentId: number, data: any) {
+    if (!this.db.assignments) {
+      this.db.assignments = [];
+    }
+    const assignment = this.db.assignments.find(a => 
+      a.escala_id === assignmentId && a.rota_id === routeId
+    );
+    if (!assignment) throw new Error(`Assignment ${assignmentId} not found`);
+    Object.assign(assignment, data, { atualizacao: getTimestamp() });
+    this.save();
+    return assignment;
+  }
+
+  deleteAssignment(routeId: number, assignmentId: number) {
+    if (!this.db.assignments) {
+      this.db.assignments = [];
+    }
+    const index = this.db.assignments.findIndex(a =>
+      a.escala_id === assignmentId && a.rota_id === routeId
+    );
+    if (index === -1) throw new Error(`Assignment ${assignmentId} not found`);
+    this.db.assignments.splice(index, 1);
+    this.save();
+  }
+
+  // ===== NOTIFICATIONS =====
+  getNotifications() {
+    if (!this.db.notifications) {
+      this.db.notifications = [];
+    }
+    return this.db.notifications;
+  }
+
+  getNotificationScopes() {
+    return ['system', 'passenger', 'driver', 'enterprise'];
+  }
+
+  createNotification(data: any) {
+    if (!this.db.notifications) {
+      this.db.notifications = [];
+    }
+    const notification = {
+      id: Math.max(...(this.db.notifications.map(n => n.id) || []), 0) + 1,
+      titulo: data.titulo,
+      descricao: data.descricao,
+      tipo: data.tipo || 'info',
+      escopo: data.escopo || 'system',
+      ativo: data.ativo !== false,
+      criacao: getTimestamp(),
+      atualizacao: getTimestamp()
+    };
+    this.db.notifications.push(notification);
+    this.save();
+    return notification;
+  }
+
+  updateNotification(id: number, data: any) {
+    if (!this.db.notifications) {
+      this.db.notifications = [];
+    }
+    const notification = this.db.notifications.find(n => n.id === id);
+    if (!notification) throw new Error(`Notification ${id} not found`);
+    Object.assign(notification, data, { atualizacao: getTimestamp() });
+    this.save();
+    return notification;
+  }
+
+  deleteNotification(id: number) {
+    if (!this.db.notifications) {
+      this.db.notifications = [];
+    }
+    const index = this.db.notifications.findIndex(n => n.id === id);
+    if (index === -1) throw new Error(`Notification ${id} not found`);
+    this.db.notifications.splice(index, 1);
+    this.save();
+  }
+
+  // ===== INVITES =====
+  getInvites() {
+    if (!this.db.invites) {
+      this.db.invites = [];
+    }
+    return this.db.invites;
+  }
+
+  getInviteById(id: number) {
+    if (!this.db.invites) {
+      this.db.invites = [];
+    }
+    return this.db.invites.find(i => i.id === id) || null;
+  }
+
+  createInvite(data: any) {
+    if (!this.db.invites) {
+      this.db.invites = [];
+    }
+    const invite = {
+      id: Math.max(...(this.db.invites.map(i => i.id) || []), 0) + 1,
+      email: data.email,
+      role: data.role || 'user',
+      status: 'pending',
+      criacao: getTimestamp(),
+      atualizacao: getTimestamp()
+    };
+    this.db.invites.push(invite);
+    this.save();
+    return invite;
+  }
+
+  // ===== REPORTS =====
+  getCharts() {
+    return {
+      data: {
+        passengersPerRoute: this.db.passengers.reduce((acc, p) => {
+          const key = p.rota_id || 'unassigned';
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {} as Record<number | string, number>),
+        driversPerRoute: this.db.routes.map(r => ({
+          routeId: r.rota_id,
+          routeName: r.nome,
+          drivers: (this.db.assignments || []).filter(a => a.rota_id === r.rota_id).length
+        }))
+      }
+    };
+  }
+
+  getUtilization() {
+    return {
+      data: {
+        vehicles: {
+          total: this.db.vehicles.length,
+          inUse: (this.db.assignments || []).length,
+          available: this.db.vehicles.length - (this.db.assignments || []).length
+        },
+        drivers: {
+          total: this.db.drivers.length,
+          assigned: (this.db.assignments || []).map(a => a.motorista_id).filter((v, i, a) => a.indexOf(v) === i).length,
+          available: this.db.drivers.length - (this.db.assignments || []).map(a => a.motorista_id).filter((v, i, a) => a.indexOf(v) === i).length
+        }
+      }
+    };
+  }
+
+  getPointsOnly() {
+    return {
+      data: this.db.stops.map(s => ({
+        ponto_id: s.ponto_id,
+        nome: s.nome,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        bairro: s.bairro,
+        cidade: s.cidade
+      }))
+    };
+  }
+
+  // ===== SEARCH & AUTOCOMPLETE =====
+  searchAutocomplete(query: string) {
+    const q = query.toLowerCase();
+    return {
+      drivers: this.db.drivers.filter(d => d.nome.toLowerCase().includes(q)).slice(0, 5),
+      vehicles: this.db.vehicles.filter(v => v.nome.toLowerCase().includes(q) || v.placa.toLowerCase().includes(q)).slice(0, 5),
+      stops: this.db.stops.filter(s => s.nome.toLowerCase().includes(q)).slice(0, 5),
+      routes: this.db.routes.filter(r => r.nome.toLowerCase().includes(q)).slice(0, 5),
+      passengers: this.db.passengers.filter(p => p.nome_completo.toLowerCase().includes(q)).slice(0, 5)
+    };
+  }
+
+  // ===== MISSING HELPER METHODS =====
+  register(email: string, password: string, name: string) {
+    const user = {
+      id: 1,
+      email,
+      name,
+      role: 'user',
+      criacao: getTimestamp(),
+      atualizacao: getTimestamp()
+    };
+    const token = `demo_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return { token, user };
+  }
+
+  changePassword(token: string, oldPassword: string, newPassword: string) {
+    if (!token || !token.startsWith('demo_token_')) {
+      throw new Error('Token inválido');
+    }
+    return { success: true, message: 'Senha alterada com sucesso' };
+  }
+
+  getUserById(id: number) {
+    return {
+      id,
+      email: `user${id}@bushere.com`,
+      name: `User ${id}`,
+      role: 'admin',
+      criacao: getTimestamp(),
+      atualizacao: getTimestamp()
+    };
+  }
+
+  import(data: any) {
+    try {
+      this.db = JSON.parse(JSON.stringify(data));
+      this.save();
+      return { success: true, message: 'Database imported successfully' };
+    } catch (e) {
+      throw new Error('Failed to import database');
+    }
+  }
+
+  executeSql(sql: string) {
+    // Demo implementation - return mock data
+    return {
+      success: true,
+      message: 'SQL executed in demo mode',
+      rows: []
+    };
+  }
+
+  getRoutesByPassenger() {
+    return {
+      data: this.db.routes.map(r => ({
+        rota_id: r.rota_id,
+        nome: r.nome,
+        origem: r.origem_descricao,
+        destino: r.destino_descricao,
+        passageiros: this.db.passengers.filter(p => p.rota_id === r.rota_id).length
+      }))
+    };
+  }
+
+  getStopsByPassenger() {
+    return {
+      data: this.db.stops.map(s => ({
+        ponto_id: s.ponto_id,
+        nome: s.nome,
+        passageiros: this.db.passengers.filter(p => p.ponto_id === s.ponto_id).length
+      }))
+    };
+  }
+
+  export() {
+    return JSON.parse(JSON.stringify(this.db));
+  }
 }
 
 // ===== EXPORTS =====
@@ -878,560 +1241,3 @@ export function isDemoMode(): boolean {
 
 export type { Driver, Vehicle, Stop, Route, RouteStop, Passenger, Activity, PaginatedResponse };
 export { DriverStatus, VehicleStatus, RouteStatus, VehicleType, PassengerType };
-
-
-class LocalStorageDB {
-  private db: Database;
-
-  constructor() {
-    this.loadOrInit();
-  }
-
-  private loadOrInit() {
-    const stored = localStorage.getItem(DB_KEY);
-    if (stored) {
-      try {
-        this.db = JSON.parse(stored);
-      } catch (e) {
-        console.warn('Erro ao carregar DB do localStorage, inicializando com dados padrão');
-        this.reset();
-      }
-    } else {
-      this.reset();
-    }
-  }
-
-  private save() {
-    localStorage.setItem(DB_KEY, JSON.stringify(this.db));
-  }
-
-  reset() {
-    this.db = JSON.parse(JSON.stringify(INITIAL_DATA));
-    this.save();
-    console.log('🔄 Database resetado com dados portados do SQL');
-  }
-
-  getAllData() {
-    return JSON.parse(JSON.stringify(this.db));
-  }
-
-  export() {
-    return JSON.parse(JSON.stringify(this.db));
-  }
-
-  import(data: Partial<Database>) {
-    Object.assign(this.db, data);
-    this.save();
-    console.log('✅ Database importado com sucesso');
-  }
-
-  // ===== DRIVERS =====
-  getDrivers(page = 1, limit = 10, search = ''): PaginatedResponse<Driver> {
-    let filtered = [...this.db.drivers];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(d =>
-        d.nome.toLowerCase().includes(searchLower) ||
-        d.cpf.includes(search) ||
-        d.email.toLowerCase().includes(searchLower)
-      );
-    }
-
-    const total = filtered.length;
-    const pages = Math.ceil(total / limit);
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-
-    return { data, total, page, limit, pages };
-  }
-
-  getDriverById(id: number): Driver | null {
-    return this.db.drivers.find(d => d.id === id) || null;
-  }
-
-  createDriver(data: Omit<Driver, 'id' | 'criacao' | 'atualizacao'>): Driver {
-    const driver: Driver = {
-      ...data,
-      id: generateId(),
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp(),
-    };
-    this.db.drivers.push(driver);
-    this.save();
-    this.logActivity('CREATE', 'Motorista', driver.id);
-    return driver;
-  }
-
-  updateDriver(id: number, data: Partial<Driver>): Driver {
-    const driver = this.db.drivers.find(d => d.id === id);
-    if (!driver) throw new Error(`Driver ${id} not found`);
-
-    Object.assign(driver, data, { atualizacao: getTimestamp() });
-    this.save();
-    this.logActivity('UPDATE', 'Motorista', id);
-    return driver;
-  }
-
-  deleteDriver(id: number) {
-    const index = this.db.drivers.findIndex(d => d.id === id);
-    if (index === -1) throw new Error(`Driver ${id} not found`);
-
-    this.db.drivers.splice(index, 1);
-    this.save();
-    this.logActivity('DELETE', 'Motorista', id);
-  }
-
-  getDriverStatus() {
-    return this.db.driverStatuses;
-  }
-
-  // ===== VEHICLES =====
-  getVehicles(page = 1, limit = 10, search = ''): PaginatedResponse<Vehicle> {
-    let filtered = [...this.db.vehicles];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(v =>
-        v.placa.toLowerCase().includes(searchLower) ||
-        v.modelo.toLowerCase().includes(searchLower) ||
-        v.nome.toLowerCase().includes(searchLower)
-      );
-    }
-
-    const total = filtered.length;
-    const pages = Math.ceil(total / limit);
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-
-    return { data, total, page, limit, pages };
-  }
-
-  getVehicleById(id: number): Vehicle | null {
-    return this.db.vehicles.find(v => v.id === id) || null;
-  }
-
-  createVehicle(data: Omit<Vehicle, 'id' | 'criacao' | 'atualizacao'>): Vehicle {
-    const vehicle: Vehicle = {
-      ...data,
-      id: generateId(),
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp(),
-    };
-    this.db.vehicles.push(vehicle);
-    this.save();
-    this.logActivity('CREATE', 'Veículo', vehicle.id);
-    return vehicle;
-  }
-
-  updateVehicle(id: number, data: Partial<Vehicle>): Vehicle {
-    const vehicle = this.db.vehicles.find(v => v.id === id);
-    if (!vehicle) throw new Error(`Vehicle ${id} not found`);
-
-    Object.assign(vehicle, data, { atualizacao: getTimestamp() });
-    this.save();
-    this.logActivity('UPDATE', 'Veículo', id);
-    return vehicle;
-  }
-
-  deleteVehicle(id: number) {
-    const index = this.db.vehicles.findIndex(v => v.id === id);
-    if (index === -1) throw new Error(`Vehicle ${id} not found`);
-
-    this.db.vehicles.splice(index, 1);
-    this.save();
-    this.logActivity('DELETE', 'Veículo', id);
-  }
-
-  getVehicleTypes() {
-    return this.db.vehicleTypes;
-  }
-
-  getVehicleStatus() {
-    return this.db.vehicleStatuses;
-  }
-
-  // ===== STOPS =====
-  getStops(): Stop[] {
-    return JSON.parse(JSON.stringify(this.db.stops));
-  }
-
-  getStopById(id: number): Stop | null {
-    return this.db.stops.find(s => s.id === id) || null;
-  }
-
-  createStop(data: Omit<Stop, 'id' | 'criacao' | 'atualizacao'>): Stop {
-    const stop: Stop = {
-      ...data,
-      id: generateId(),
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp(),
-    };
-    this.db.stops.push(stop);
-    this.save();
-    this.logActivity('CREATE', 'Ponto', stop.id);
-    return stop;
-  }
-
-  updateStop(id: number, data: Partial<Stop>): Stop {
-    const stop = this.db.stops.find(s => s.id === id);
-    if (!stop) throw new Error(`Stop ${id} not found`);
-
-    Object.assign(stop, data, { atualizacao: getTimestamp() });
-    this.save();
-    this.logActivity('UPDATE', 'Ponto', id);
-    return stop;
-  }
-
-  deleteStop(id: number) {
-    const index = this.db.stops.findIndex(s => s.id === id);
-    if (index === -1) throw new Error(`Stop ${id} not found`);
-
-    this.db.stops.splice(index, 1);
-    this.save();
-    this.logActivity('DELETE', 'Ponto', id);
-  }
-
-  searchStops(name: string): Stop[] {
-    return this.db.stops.filter(s =>
-      s.nome.toLowerCase().includes(name.toLowerCase())
-    );
-  }
-
-  getStopsStats() {
-    return {
-      total: this.db.stops.length,
-      stops: this.db.stops.map(s => ({
-        id: s.id,
-        nome: s.nome,
-        passengerCount: this.db.passengers.length,
-        routeCount: this.db.routeStops.filter(rs => rs.ponto_id === s.id).length
-      }))
-    };
-  }
-
-  // ===== ROUTES =====
-  getRoutes(page = 1, limit = 10, search = ''): PaginatedResponse<Route> {
-    let filtered = [...this.db.routes];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.nome.toLowerCase().includes(searchLower) ||
-        r.codigo_rota.toLowerCase().includes(searchLower)
-      );
-    }
-
-    const total = filtered.length;
-    const pages = Math.ceil(total / limit);
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-
-    return { data, total, page, limit, pages };
-  }
-
-  getRouteById(id: number): Route | null {
-    return this.db.routes.find(r => r.id === id) || null;
-  }
-
-  getRouteByIdWithStops(id: number) {
-    const route = this.db.routes.find(r => r.id === id);
-    if (!route) throw new Error(`Route ${id} not found`);
-
-    const stopsData = this.db.routeStops
-      .filter(rs => rs.rota_id === id)
-      .sort((a, b) => a.ordem - b.ordem)
-      .map(rs => this.db.stops.find(s => s.id === rs.ponto_id));
-
-    return {
-      ...route,
-      stopsData,
-    };
-  }
-
-  createRoute(data: Omit<Route, 'id' | 'criacao' | 'atualizacao'>): Route {
-    const route: Route = {
-      ...data,
-      id: generateId(),
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp(),
-    };
-    this.db.routes.push(route);
-    this.save();
-    this.logActivity('CREATE', 'Rota', route.id);
-    return route;
-  }
-
-  updateRoute(id: number, data: Partial<Route>): Route {
-    const route = this.db.routes.find(r => r.id === id);
-    if (!route) throw new Error(`Route ${id} not found`);
-
-    Object.assign(route, data, { atualizacao: getTimestamp() });
-    this.save();
-    this.logActivity('UPDATE', 'Rota', id);
-    return route;
-  }
-
-  deleteRoute(id: number) {
-    const index = this.db.routes.findIndex(r => r.id === id);
-    if (index === -1) throw new Error(`Route ${id} not found`);
-
-    this.db.routes.splice(index, 1);
-    this.save();
-    this.logActivity('DELETE', 'Rota', id);
-  }
-
-  getRouteStatus() {
-    return this.db.routeStatuses;
-  }
-
-  getRouteStops(routeId: number): Stop[] {
-    return this.db.routeStops
-      .filter(rs => rs.rota_id === routeId)
-      .sort((a, b) => a.ordem - b.ordem)
-      .map(rs => this.db.stops.find(s => s.id === rs.ponto_id))
-      .filter((s) => s !== undefined) as Stop[];
-  }
-
-  // ===== PASSENGERS =====
-  getPassengers(page = 1, limit = 10, search = ''): PaginatedResponse<Passenger> {
-    let filtered = [...this.db.passengers];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.nome_completo.toLowerCase().includes(searchLower) ||
-        p.cpf.includes(search) ||
-        p.email.toLowerCase().includes(searchLower)
-      );
-    }
-
-    const total = filtered.length;
-    const pages = Math.ceil(total / limit);
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-
-    return { data, total, page, limit, pages };
-  }
-
-  getPassengerById(id: number): Passenger | null {
-    return this.db.passengers.find(p => p.id === id) || null;
-  }
-
-  createPassenger(data: Omit<Passenger, 'id' | 'criacao' | 'atualizacao'>): Passenger {
-    const passenger: Passenger = {
-      ...data,
-      id: generateId(),
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp(),
-    };
-    this.db.passengers.push(passenger);
-    this.save();
-    this.logActivity('CREATE', 'Passageiro', passenger.id);
-    return passenger;
-  }
-
-  updatePassenger(id: number, data: Partial<Passenger>): Passenger {
-    const passenger = this.db.passengers.find(p => p.id === id);
-    if (!passenger) throw new Error(`Passenger ${id} not found`);
-
-    Object.assign(passenger, data, { atualizacao: getTimestamp() });
-    this.save();
-    this.logActivity('UPDATE', 'Passageiro', id);
-    return passenger;
-  }
-
-  deletePassenger(id: number) {
-    const index = this.db.passengers.findIndex(p => p.id === id);
-    if (index === -1) throw new Error(`Passenger ${id} not found`);
-
-    this.db.passengers.splice(index, 1);
-    this.save();
-    this.logActivity('DELETE', 'Passageiro', id);
-  }
-
-  getPassengerTypes() {
-    return this.db.passengerTypes;
-  }
-
-  // ===== REPORTS =====
-  getStats() {
-    return {
-      data: {
-        passengers: {
-          total: this.db.passengers.length
-        },
-        drivers: {
-          total: this.db.drivers.length
-        },
-        vehicles: {
-          total: this.db.vehicles.length
-        },
-        routes: {
-          total: this.db.routes.length
-        }
-      }
-    };
-  }
-
-  getCharts() {
-    return {
-      routeUsage: this.db.routes.map(r => ({
-        nome: r.nome,
-        passengers: this.db.passengers.length,
-        stops: this.db.routeStops.filter(rs => rs.rota_id === r.id).length
-      })),
-      vehicleUtilization: this.db.vehicles.map(v => ({
-        placa: v.placa,
-        modelo: v.modelo,
-        utilizacao: Math.floor(Math.random() * 100)
-      }))
-    };
-  }
-
-  getUtilization() {
-    return {
-      totalCapacity: this.db.vehicles.reduce((sum, v) => sum + v.capacidade, 0),
-      currentPassengers: this.db.passengers.length,
-      utilizationRate: (this.db.passengers.length / this.db.vehicles.reduce((sum, v) => sum + v.capacidade, 0) * 100).toFixed(2)
-    };
-  }
-
-  // ===== ACTIVITY LOG =====
-  getRecentActivity(limit = 100): Activity[] {
-    return this.db.activityLog.slice(-limit).reverse();
-  }
-
-  private logActivity(action: string, entity: string, entityId: number) {
-    this.db.activityLog.push({
-      id: generateId(),
-      usuario_id: 1,
-      descricao: `${action} em ${entity}`,
-      tipo_mudanca: action,
-      timestamp: getTimestamp()
-    });
-
-    // Manter apenas os últimos 1000 registros
-    if (this.db.activityLog.length > 1000) {
-      this.db.activityLog = this.db.activityLog.slice(-1000);
-    }
-  }
-
-  // ===== AUTHENTICATION =====
-  login(email: string, password: string) {
-    if (!email || !password) {
-      throw new Error('Email e senha são obrigatórios');
-    }
-
-    const user = {
-      id: 1,
-      email: email,
-      nome: email.split('@')[0],
-      role: 'admin',
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp()
-    };
-
-    const token = `demo_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    return {
-      token,
-      user
-    };
-  }
-
-  register(userData: { email: string; password: string; nome: string; [key: string]: any }) {
-    if (!userData.email || !userData.password || !userData.nome) {
-      throw new Error('Email, senha e nome são obrigatórios');
-    }
-
-    const user = {
-      id: generateId(),
-      email: userData.email,
-      nome: userData.nome,
-      role: 'user',
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp()
-    };
-
-    const token = `demo_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    return {
-      token,
-      user
-    };
-  }
-
-  getCurrentUser(token: string) {
-    if (!token || !token.startsWith('demo_token_')) {
-      throw new Error('Token inválido');
-    }
-
-    return {
-      id: 1,
-      email: 'admin@bushere.com',
-      nome: 'Admin',
-      role: 'admin',
-      criacao: getTimestamp(),
-      atualizacao: getTimestamp()
-    };
-  }
-
-  changePassword(email: string, oldPassword: string, newPassword: string) {
-    if (!email || !oldPassword || !newPassword) {
-      throw new Error('Email, senha antiga e nova senha são obrigatórios');
-    }
-
-    return { success: true, message: 'Senha alterada com sucesso' };
-  }
-
-  logout() {
-    return { success: true };
-  }
-
-  // ===== NOTIFICATIONS =====
-  getNotifications() {
-    return [];
-  }
-
-  createNotification(data: any) {
-    return data;
-  }
-
-  updateNotification(id: number, data: any) {
-    return data;
-  }
-
-  deleteNotification(id: number) {
-    return { success: true };
-  }
-
-  getNotificationScopes() {
-    return ['system', 'passenger', 'driver', 'vehicle', 'route'];
-  }
-
-  // ===== INVITES =====
-  getInvites() {
-    return [];
-  }
-
-  createInvite(data: any) {
-    return data;
-  }
-
-  getInviteById(id: number) {
-    return null;
-  }
-}
-
-// Exporta instância única
-export const db = new LocalStorageDB();
-
-// Função para ativar/desativar modo demo
-export function setDemoMode(enabled: boolean) {
-  localStorage.setItem(DEMO_MODE_KEY, String(enabled));
-}
-
-export function isDemoMode(): boolean {
-  return localStorage.getItem(DEMO_MODE_KEY) === 'true';
-}
