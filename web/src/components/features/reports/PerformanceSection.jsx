@@ -52,7 +52,7 @@ const PerformanceSection = ({ reportData }) => {
     {
       title: "Taxa de Utilização da Frota",
       percentage: (() => {
-        const totalPassageiros = reportData.stats?.passengers?.total || reportData.passengers?.length || 0;
+        const totalPassageiros = reportData.stats?.passengers?.total || 0;
         const capacidadeTotal = reportData.stats?.vehicles?.totalCapacity || 
                                (reportData.vehicles && Array.isArray(reportData.vehicles) ? 
                                 reportData.vehicles.reduce((total, vehicle) => total + (parseInt(vehicle.capacidade) || 0), 0) : 0);
@@ -60,53 +60,50 @@ const PerformanceSection = ({ reportData }) => {
         if (capacidadeTotal === 0) return 0;
         return ((totalPassageiros / capacidadeTotal) * 100).toFixed(1);
       })(),
-      gradient: "linear-gradient(90deg, #12BE4D 0%, #5CE98B 100%)", // Primary gradient
+      gradient: "linear-gradient(90deg, #12BE4D 0%, #5CE98B 100%)",
       description: "Passageiros vs Capacidade Total"
     },
     {
       title: "Pontos Ativos",
       percentage: (() => {
-        const totalPontos = reportData.stats?.stops?.total_pontos || reportData.stops?.length || 0;
-        const pontosAtivos = reportData.stats?.stops?.pontos_ativos || 
-                            getActiveStops(reportData.stops || []).length;
+        const totalPontos = reportData.stats?.stops?.total_pontos || 0;
+        const pontosAtivos = reportData.stats?.stops?.pontos_ativos || 0;
         
         if (totalPontos === 0) return 0;
         return ((pontosAtivos / totalPontos) * 100).toFixed(1);
       })(),
-      gradient: "linear-gradient(90deg, #1E90FF 0%, #12BEA0 100%)", // Info to analogous
+      gradient: "linear-gradient(90deg, #1E90FF 0%, #12BEA0 100%)",
       description: (() => {
-        const totalPontos = reportData.stats?.stops?.total_pontos || reportData.stops?.length || 0;
-        const pontosAtivos = reportData.stats?.stops?.pontos_ativos || 
-                            getActiveStops(reportData.stops || []).length;
+        const totalPontos = reportData.stats?.stops?.total_pontos || 0;
+        const pontosAtivos = reportData.stats?.stops?.pontos_ativos || 0;
         return `${pontosAtivos} de ${totalPontos} pontos`;
       })()
     },
     {
       title: "Eficiência de Rotas",
       percentage: (() => {
-        const rotasAtivas = getActiveCountFromStats(reportData.stats?.routes?.byStatus, isRouteActive) || 
-                           getActiveRoutes(reportData.routes || []).length;
-        const totalRotas = reportData.stats?.routes?.total || (reportData.routes && Array.isArray(reportData.routes) ? reportData.routes.length : 0);
+        const rotasAtivas = reportData.stats?.routes?.ativas || 0;
+        const totalRotas = reportData.stats?.routes?.total || 0;
         
         if (totalRotas === 0) return 0;
         return ((rotasAtivas / totalRotas) * 100).toFixed(1);
       })(),
-      gradient: "linear-gradient(90deg, #FF6B6B 0%, #FFC107 100%)", // Accent to warning
+      gradient: "linear-gradient(90deg, #FF6B6B 0%, #FFC107 100%)",
       description: "Rotas Ativas vs Total"
     },
     {
       title: "Eficiência de Motoristas",
       percentage: (() => {
-        const motoristasAtivos = getActiveDriverData();
-        const totalMotoristas = getDriverData();
+        const motoristasAtivos = reportData.stats?.drivers?.ativos || 0;
+        const totalMotoristas = reportData.stats?.drivers?.total || 0;
         
         if (totalMotoristas === 0) return 0;
         return ((motoristasAtivos / totalMotoristas) * 100).toFixed(1);
       })(),
-      gradient: "linear-gradient(90deg, #E74C3C 0%, #F39C12 100%)", // Red to orange
+      gradient: "linear-gradient(90deg, #E74C3C 0%, #F39C12 100%)",
       description: (() => {
-        const motoristasAtivos = getActiveDriverData();
-        const totalMotoristas = getDriverData();
+        const motoristasAtivos = reportData.stats?.drivers?.ativos || 0;
+        const totalMotoristas = reportData.stats?.drivers?.total || 0;
         return `${motoristasAtivos} de ${totalMotoristas} motoristas`;
       })()
     }
