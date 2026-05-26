@@ -76,6 +76,7 @@ function SideBar() {
     { path: '/routes', icon: 'signpost-split-fill', label: 'Rotas', keybindId: 'sidebar-5', keybindLabel: "Alt+5" },
     { path: '/stops', icon: 'geo-alt-fill', label: 'Pontos', keybindId: 'sidebar-6', keybindLabel: "Alt+6" },
     { path: '/notifications', icon: 'bell-fill', label: 'Avisos', keybindId: 'sidebar-7', keybindLabel: "Alt+7" },
+    { path: '/demo', icon: 'lock-fill', label: 'Demonstração', keybindId: 'sidebar-demo', keybindLabel: "Alt+D" },
     { path: '/reports', icon: 'graph-up', label: 'Relatórios', keybindId: 'sidebar-8', keybindLabel: "Alt+8" },
     { path: '/settings', icon: 'gear-fill', label: 'Configurações', keybindId: 'sidebar-9', keybindLabel: "Alt+9" }
   ];

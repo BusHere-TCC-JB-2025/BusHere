@@ -183,34 +183,14 @@ function NotificationsPage({ pageFunctions }) {
             </div>
           </div>
           
-          <div className="card-body p-3">
-            {error && (
-              <ErrorAlert 
-                error={error}
-                onRetry={refetch}
-                onDismiss={() => {}}
-                variant="danger"
-              />
-            )}
-            
-            {isLoading ? (
-              <LoadingSpinner 
-                size="large" 
-                message="Carregando avisos..." 
-                variant="primary"
-              />
-            ) : (
-              <div className="table-responsive">
-                <Table 
-                  headers={TABLE_HEADERS}
-                  data={notifications}
-                  itemsPerPage={10}
-                  searchable={true}
-                  className="table-striped table-hover"
-                  onRowClick={handleRowClick}
-                />
-              </div>
-            )}          
+          <div className="card-body p-5">
+            <div className="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+              <i className="bi bi-info-circle text-muted mb-3" style={{ fontSize: '3rem' }}></i>
+              <h3 className="text-muted fw-light mb-2">Não disponível na Versão de Demonstração</h3>
+              <p className="text-muted">
+                Clique <a href="#" className="text-primary text-decoration-none fw-bold">Aqui</a> para saber mais
+              </p>
+            </div>
           </div>
         </div>
         

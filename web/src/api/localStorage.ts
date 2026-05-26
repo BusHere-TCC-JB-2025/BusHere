@@ -182,11 +182,17 @@ interface Passenger {
 }
 
 interface Activity {
-  id: number;
-  action: string;
-  entity: string;
-  entityId: number;
+  mudanca_id: number;
+  usuario_id: number;
+  tabela: string;
+  registro_id: number;
+  operacao: string;
+  dados_antigos: any;
+  dados_novos: any;
   timestamp: string;
+  usuario?: {
+    nome: string;
+  };
 }
 
 interface PaginatedResponse<T> {
@@ -627,6 +633,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.drivers.push(driver);
+    this.logActivity('INSERT', 'Motoristas', driver.motorista_id, null, driver);
     this.save();
     return driver;
   }
@@ -635,7 +642,9 @@ class LocalStorageDB {
     const driver = this.db.drivers.find(d => d.motorista_id === id);
     if (!driver) throw new Error(`Driver ${id} not found`);
 
+    const oldData = { ...driver };
     Object.assign(driver, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'Motoristas', id, oldData, driver);
     this.save();
     return driver;
   }
@@ -644,7 +653,9 @@ class LocalStorageDB {
     const index = this.db.drivers.findIndex(d => d.motorista_id === id);
     if (index === -1) throw new Error(`Driver ${id} not found`);
 
+    const oldData = { ...this.db.drivers[index] };
     this.db.drivers.splice(index, 1);
+    this.logActivity('DELETE', 'Motoristas', id, oldData, null);
     this.save();
   }
 
@@ -681,6 +692,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.vehicles.push(vehicle);
+    this.logActivity('INSERT', 'Veiculos', vehicle.veiculo_id, null, vehicle);
     this.save();
     return vehicle;
   }
@@ -689,7 +701,9 @@ class LocalStorageDB {
     const vehicle = this.db.vehicles.find(v => v.veiculo_id === id);
     if (!vehicle) throw new Error(`Vehicle ${id} not found`);
 
+    const oldData = { ...vehicle };
     Object.assign(vehicle, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'Veiculos', id, oldData, vehicle);
     this.save();
     return vehicle;
   }
@@ -698,7 +712,9 @@ class LocalStorageDB {
     const index = this.db.vehicles.findIndex(v => v.veiculo_id === id);
     if (index === -1) throw new Error(`Vehicle ${id} not found`);
 
+    const oldData = { ...this.db.vehicles[index] };
     this.db.vehicles.splice(index, 1);
+    this.logActivity('DELETE', 'Veiculos', id, oldData, null);
     this.save();
   }
 
@@ -719,6 +735,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.stops.push(stop);
+    this.logActivity('INSERT', 'Pontos', stop.ponto_id, null, stop);
     this.save();
     return stop;
   }
@@ -727,7 +744,9 @@ class LocalStorageDB {
     const stop = this.db.stops.find(s => s.ponto_id === id);
     if (!stop) throw new Error(`Stop ${id} not found`);
 
+    const oldData = { ...stop };
     Object.assign(stop, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'Pontos', id, oldData, stop);
     this.save();
     return stop;
   }
@@ -736,7 +755,9 @@ class LocalStorageDB {
     const index = this.db.stops.findIndex(s => s.ponto_id === id);
     if (index === -1) throw new Error(`Stop ${id} not found`);
 
+    const oldData = { ...this.db.stops[index] };
     this.db.stops.splice(index, 1);
+    this.logActivity('DELETE', 'Pontos', id, oldData, null);
     this.save();
   }
 
@@ -799,6 +820,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.routes.push(route);
+    this.logActivity('INSERT', 'Rotas', route.rota_id, null, route);
     this.save();
     return route;
   }
@@ -807,7 +829,9 @@ class LocalStorageDB {
     const route = this.db.routes.find(r => r.rota_id === id);
     if (!route) throw new Error(`Route ${id} not found`);
 
+    const oldData = { ...route };
     Object.assign(route, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'Rotas', id, oldData, route);
     this.save();
     return route;
   }
@@ -816,7 +840,9 @@ class LocalStorageDB {
     const index = this.db.routes.findIndex(r => r.rota_id === id);
     if (index === -1) throw new Error(`Route ${id} not found`);
 
+    const oldData = { ...this.db.routes[index] };
     this.db.routes.splice(index, 1);
+    this.logActivity('DELETE', 'Rotas', id, oldData, null);
     this.save();
   }
 
@@ -886,6 +912,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.passengers.push(passenger);
+    this.logActivity('INSERT', 'Passageiros', passenger.passageiro_id, null, passenger);
     this.save();
     return passenger;
   }
@@ -894,7 +921,9 @@ class LocalStorageDB {
     const passenger = this.db.passengers.find(p => p.passageiro_id === id);
     if (!passenger) throw new Error(`Passenger ${id} not found`);
 
+    const oldData = { ...passenger };
     Object.assign(passenger, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'Passageiros', id, oldData, passenger);
     this.save();
     return passenger;
   }
@@ -903,24 +932,29 @@ class LocalStorageDB {
     const index = this.db.passengers.findIndex(p => p.passageiro_id === id);
     if (index === -1) throw new Error(`Passenger ${id} not found`);
 
+    const oldData = { ...this.db.passengers[index] };
     this.db.passengers.splice(index, 1);
+    this.logActivity('DELETE', 'Passageiros', id, oldData, null);
     this.save();
   }
 
   // ===== ACTIVITY LOG =====
   getRecentActivity(limit = 50): Activity[] {
-    return this.db.activityLog.slice(-limit).reverse();
+    return this.db.activityLog.slice(-limit).reverse().map(a => ({
+      ...a,
+      usuario: { nome: 'Administrador (Demo)' }
+    }));
   }
 
-  logActivity(action: string, entity: string, entityId: number) {
+  logActivity(action: string, entity: string, entityId: number, oldData: any = null, newData: any = null) {
     this.db.activityLog.push({
       mudanca_id: Math.max(...this.db.activityLog.map(a => a.mudanca_id || 0), 0) + 1,
       usuario_id: 1,
       tabela: entity,
       registro_id: entityId,
       operacao: action,
-      dados_antigos: null,
-      dados_novos: null,
+      dados_antigos: oldData,
+      dados_novos: newData,
       timestamp: getTimestamp()
     });
 
@@ -1185,6 +1219,7 @@ class LocalStorageDB {
       atualizacao: getTimestamp()
     };
     this.db.assignments.push(assignment);
+    this.logActivity('INSERT', 'VeiculoRota', assignment.veiculo_rota_id, null, assignment);
     this.save();
     return assignment;
   }
@@ -1198,7 +1233,9 @@ class LocalStorageDB {
     );
     if (!assignment) throw new Error(`Assignment ${assignmentId} not found`);
     
+    const oldData = { ...assignment };
     Object.assign(assignment, data, { atualizacao: getTimestamp() });
+    this.logActivity('UPDATE', 'VeiculoRota', assignmentId, oldData, assignment);
     this.save();
     return assignment;
   }
@@ -1212,9 +1249,9 @@ class LocalStorageDB {
     );
     if (index === -1) throw new Error(`Assignment ${assignmentId} not found`);
     
-    // Em vez de deletar, podemos apenas desativar para manter histórico, 
-    // ou deletar como o original fazia
+    const oldData = { ...this.db.assignments[index] };
     this.db.assignments.splice(index, 1);
+    this.logActivity('DELETE', 'VeiculoRota', assignmentId, oldData, null);
     this.save();
   }
 
