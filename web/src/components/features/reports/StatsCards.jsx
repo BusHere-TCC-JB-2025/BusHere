@@ -2,7 +2,7 @@ import React, { useRef, useMemo } from 'react';
 import PopUpComponent from '../../core/feedback/PopUpComponent';
 import { Table } from '@web/components/common/data-display';
 import StatCard from '../../common/data-display/StatCard';
-import { isVehicleActive, isRouteActive, getActiveCountFromStats, getActiveVehicles, getActiveRoutes } from '@web/utils/reportFilters';
+import { isVehicleActive, isRouteActive, getActiveVehicles, getActiveRoutes } from '@web/utils/reportFilters';
 
 const StatsCards = ({ reportData }) => {
   const popUpRef = useRef(null);
