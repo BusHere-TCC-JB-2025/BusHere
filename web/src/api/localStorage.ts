@@ -875,19 +875,102 @@ class LocalStorageDB {
 
   // ===== REPORTS =====
   getStats() {
+    // Calcular estatísticas de rotas
+    const totalRotas = this.db.routes.length;
+    const rotasAtivas = this.db.routes.filter(r => r.status_rota_id === RouteStatus.ATIVA).length;
+
+    // Calcular estatísticas de motoristas
+    const totalMotoristas = this.db.drivers.length;
+    const motoristasAtivos = this.db.drivers.filter(d => 
+      (d.ativo === true || d.ativo === 1) && d.status_motorista_id === DriverStatus.ATIVO
+    ).length;
+
+    // Calcular estatísticas de pontos
+    const totalPontos = this.db.stops.length;
+    const pontosAtivos = this.db.stops.length; // Todos os pontos do banco estão ativos
+
+    // Calcular capacidade total dos veículos
+    const totalCapacidade = this.db.vehicles.reduce((total, v) => total + (v.capacidade || 0), 0);
+
+    // Calcular estatísticas de veículos por status
+    const vehiclesByStatus = [
+      {
+        label: 'Em Operação',
+        value: this.db.vehicles.filter(v => v.status_veiculo_id === VehicleStatus.EM_OPERACAO).length
+      },
+      {
+        label: 'Em Manutenção',
+        value: this.db.vehicles.filter(v => v.status_veiculo_id === VehicleStatus.EM_MANUTENCAO).length
+      },
+      {
+        label: 'Inativo',
+        value: this.db.vehicles.filter(v => v.status_veiculo_id === VehicleStatus.INATIVO).length
+      }
+    ];
+
     return {
       data: {
         passengers: {
           total: this.db.passengers.length
         },
         drivers: {
-          total: this.db.drivers.length
+          total: totalMotoristas,
+          ativos: motoristasAtivos,
+          byStatus: [
+            {
+              status_nome: 'Ativo',
+              total_motoristas: this.db.drivers.filter(d => d.status_motorista_id === DriverStatus.ATIVO).length
+            },
+            {
+              status_nome: 'Férias',
+              total_motoristas: this.db.drivers.filter(d => d.status_motorista_id === DriverStatus.FERIAS).length
+            },
+            {
+              status_nome: 'Afastado',
+              total_motoristas: this.db.drivers.filter(d => d.status_motorista_id === DriverStatus.AFASTADO).length
+            },
+            {
+              status_nome: 'Inativo',
+              total_motoristas: this.db.drivers.filter(d => d.status_motorista_id === DriverStatus.INATIVO).length
+            }
+          ]
         },
         vehicles: {
-          total: this.db.vehicles.length
+          total: this.db.vehicles.length,
+          totalCapacity: totalCapacidade,
+          byStatus: vehiclesByStatus
+        },
+        stops: {
+          total_pontos: totalPontos,
+          pontos_ativos: pontosAtivos,
+          byCity: Array.from(
+            this.db.stops.reduce((map, stop) => {
+              const city = stop.cidade || 'Não informado';
+              map.set(city, (map.get(city) || 0) + 1);
+              return map;
+            }, new Map())
+          ).map(([city, count]) => ({
+            cidade: city,
+            total_pontos: count
+          }))
         },
         routes: {
-          total: this.db.routes.length
+          total: totalRotas,
+          ativas: rotasAtivas,
+          byStatus: [
+            {
+              status_nome: 'Ativa',
+              total_rotas: rotasAtivas
+            },
+            {
+              status_nome: 'Inativa',
+              total_rotas: this.db.routes.filter(r => r.status_rota_id === RouteStatus.INATIVA).length
+            },
+            {
+              status_nome: 'Em Planejamento',
+              total_rotas: this.db.routes.filter(r => r.status_rota_id === RouteStatus.EM_PLANEJAMENTO).length
+            }
+          ]
         }
       }
     };
