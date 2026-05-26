@@ -8,7 +8,10 @@
     "setup": "npm install && cls && node scripts/setup.js",
     "start": "node scripts/start.js",
 
-    "start_ANTIGO": "concurrently --names \"W,S,BROWSER\" --prefix-colors \"green,blue,magenta\" \"npm run dev --prefix web\" \"npm run start --prefix server\" \"start http://localhost:5173/\""
+    "start_ANTIGO": "concurrently --names \"W,S,BROWSER\" --prefix-colors \"green,blue,magenta\" \"npm run dev --prefix web\" \"npm run start --prefix server\" \"start http://localhost:5173/\"",
+    "vercel_setup": "cd web && npm install",
+    "vercel_start": "cd web && npm run preview",
+    "vercel_build": "cd web && npm run build"
   },
   "keywords": [],
   "author": "",
