@@ -108,6 +108,12 @@ export const useRouting = () => {
      * @returns {Array} Array de coordenadas da rota
      */
     const getRouteWithOSRM = useCallback(async (start, end) => {
+        // Validar que as coordenadas são números válidos
+        if (!start || !end || isNaN(start.lat) || isNaN(start.lng) || isNaN(end.lat) || isNaN(end.lng)) {
+            console.warn('Coordenadas inválidas passadas para OSRM:', { start, end });
+            return [];
+        }
+
         const cacheKey = routeCache.generateKey(start, end, 'osrm');
         
         // Verificar cache primeiro
@@ -191,6 +197,12 @@ export const useRouting = () => {
                     lat: parseFloat(points[i + 1].latitude),
                     lng: parseFloat(points[i + 1].longitude)
                 };
+
+                // Validar que as coordenadas são números válidos
+                if (isNaN(start.lat) || isNaN(start.lng) || isNaN(end.lat) || isNaN(end.lng)) {
+                    console.warn(`Coordenadas inválidas para segmento ${i}:`, { start, end });
+                    continue;
+                }
 
                 let routeCoordinates;
                 

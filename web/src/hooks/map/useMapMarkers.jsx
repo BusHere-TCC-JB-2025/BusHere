@@ -19,16 +19,21 @@ export const useMapMarkers = (stops, pontosSelecionados, handlers, useRealRoutes
     // Efeito para calcular rota real quando os pontos mudam
     useEffect(() => {
         const calculateRoute = async () => {
-            if (useRealRoutes && pontosSelecionados && pontosSelecionados.length >= 2) {
+            // Validar pontos antes de calcular rota
+            const pontosValidos = pontosSelecionados && pontosSelecionados.filter(p => 
+                p && !isNaN(parseFloat(p.latitude)) && !isNaN(parseFloat(p.longitude))
+            );
+
+            if (useRealRoutes && pontosValidos && pontosValidos.length >= 2) {
                 try {
-                    const segments = await calculateRealRoute(pontosSelecionados, 'osrm');
+                    const segments = await calculateRealRoute(pontosValidos, 'osrm');
                     const combinedCoordinates = combineRouteSegments(segments);
                     
                     setRealRouteCoordinates(combinedCoordinates);
                     setRouteSegments(segments);
                     
                     // Calcular estatísticas avançadas com rota real
-                    const stats = calculateAdvancedRouteStats(pontosSelecionados, segments, {
+                    const stats = calculateAdvancedRouteStats(pontosValidos, segments, {
                         averageSpeed: currentSpeed, // Usar velocidade atual
                         useRealRoutes: true
                     });
@@ -38,24 +43,24 @@ export const useMapMarkers = (stops, pontosSelecionados, handlers, useRealRoutes
                     console.error('Erro ao calcular rota real:', error);
                     // Fallback para linha reta
                     setRealRouteCoordinates(
-                        pontosSelecionados.map(ponto => [ponto.latitude, ponto.longitude])
+                        pontosValidos.map(ponto => [ponto.latitude, ponto.longitude])
                     );
                     setRouteSegments([]);
                     
                     // Calcular estatísticas com linha reta
-                    const stats = calculateAdvancedRouteStats(pontosSelecionados, null, {
+                    const stats = calculateAdvancedRouteStats(pontosValidos, null, {
                         averageSpeed: currentSpeed,
                         useRealRoutes: false
                     });
                     setAdvancedStats(stats);
                 }
-            } else if (pontosSelecionados && pontosSelecionados.length >= 2) {
+            } else if (pontosValidos && pontosValidos.length >= 2) {
                 // Modo linha reta
                 setRealRouteCoordinates([]);
                 setRouteSegments([]);
                 
                 // Calcular estatísticas com linha reta
-                const stats = calculateAdvancedRouteStats(pontosSelecionados, null, {
+                const stats = calculateAdvancedRouteStats(pontosValidos, null, {
                     averageSpeed: currentSpeed,
                     useRealRoutes: false
                 });
@@ -76,37 +81,48 @@ export const useMapMarkers = (stops, pontosSelecionados, handlers, useRealRoutes
     }, []);
 
     const markers = [
-        // Pontos existentes (azuis)
-        ...(stops || []).map(stop => ({
-            id: `stop-${stop.ponto_id}`,
-            position: { lat: parseFloat(stop.latitude), lng: parseFloat(stop.longitude) },
-            title: stop.nome,
-            color: CONSTANTS.MARKER_COLORS.EXISTING_STOP,
-            size: CONSTANTS.MARKER_SIZES.EXISTING,
-            popupContent: (
-                <ExistingStopPopup 
-                    stop={stop} 
-                    onAddToRoute={handleSelectExistingStop} 
-                />
-            ),
-            data: stop
-        })),
+        // Pontos existentes (azuis) - filtrar os já selecionados
+        ...(stops || [])
+            .filter(stop => !pontosSelecionados.some(ponto => ponto.ponto_id === stop.ponto_id))
+            .map(stop => ({
+                id: `stop-${stop.ponto_id}`,
+                position: { lat: parseFloat(stop.latitude), lng: parseFloat(stop.longitude) },
+                title: stop.nome,
+                color: CONSTANTS.MARKER_COLORS.EXISTING_STOP,
+                size: CONSTANTS.MARKER_SIZES.EXISTING,
+                popupContent: (
+                    <ExistingStopPopup 
+                        stop={stop} 
+                        onAddToRoute={handleSelectExistingStop} 
+                    />
+                ),
+                data: stop
+            })),
         // Pontos selecionados (verdes, com numeração)
-        ...pontosSelecionados.map((ponto, index) => ({
-            id: `selected-${ponto.id}`,
-            position: { lat: ponto.latitude, lng: ponto.longitude },
-            title: `${index + 1}. ${ponto.nome}`,
-            color: CONSTANTS.MARKER_COLORS.SELECTED_STOP,
-            size: CONSTANTS.MARKER_SIZES.SELECTED,
-            popupContent: (
-                <SelectedStopPopup 
-                    ponto={ponto} 
-                    index={index} 
-                    onRemoveFromRoute={handleRemoveStop} 
-                />
-            ),
-            data: ponto
-        }))
+        ...pontosSelecionados.map((ponto, index) => {
+            const marker = {
+                id: `selected-${ponto.id}`,
+                position: { lat: ponto.latitude, lng: ponto.longitude },
+                title: `${index + 1}. ${ponto.nome}`,
+                color: CONSTANTS.MARKER_COLORS.SELECTED_STOP,
+                size: CONSTANTS.MARKER_SIZES.SELECTED,
+                popupContent: (
+                    <SelectedStopPopup 
+                        ponto={ponto} 
+                        index={index} 
+                        onRemoveFromRoute={handleRemoveStop} 
+                    />
+                ),
+                data: ponto
+            };
+            
+            // Debug: Verificar se marcador verde está sendo criado
+            if (pontosSelecionados.length > 0 && index === 0) {
+                console.log('Primeiro marcador selecionado:', marker);
+            }
+            
+            return marker;
+        })
     ];
 
     // Polylines para conectar os pontos selecionados

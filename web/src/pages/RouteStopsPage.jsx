@@ -171,21 +171,40 @@ function RouteStopsPage({ pageFunctions, isDark }) {
 
                 // Carregar pontos da rota se existirem
                 if (route.pontos && route.pontos.length > 0) {
-                    const pontosFormatados = route.pontos.map((ponto, index) => ({
-                        id: `existing-${ponto.ponto_id}`,
-                        ponto_id: ponto.ponto_id,
-                        latitude: parseFloat(ponto.latitude),
-                        longitude: parseFloat(ponto.longitude),
-                        nome: ponto.nome,
-                        ordem: ponto.ordem || index + 1,
-                        logradouro: ponto.logradouro || '',
-                        bairro: ponto.bairro || '',
-                        cidade: ponto.cidade || '',
-                        horario_previsto_passagem: ponto.horario_previsto_passagem || ''
-                    }));
+                    const pontosFormatados = route.pontos.map((ponto, index) => {
+                        const formatted = {
+                            id: `stop-selected-${ponto.ponto_id}`,
+                            ponto_id: ponto.ponto_id,
+                            latitude: parseFloat(ponto.latitude),
+                            longitude: parseFloat(ponto.longitude),
+                            nome: ponto.nome,
+                            ordem: ponto.ordem || index + 1,
+                            logradouro: ponto.logradouro || '',
+                            bairro: ponto.bairro || '',
+                            cidade: ponto.cidade || '',
+                            horario_previsto_passagem: ponto.horario_previsto_passagem || ''
+                        };
+                        
+                        // Debug: verificar se coordenadas são válidas
+                        if (isNaN(formatted.latitude) || isNaN(formatted.longitude)) {
+                            console.warn(`Ponto ${ponto.nome} tem coordenadas inválidas:`, {
+                                latitude: ponto.latitude,
+                                longitude: ponto.longitude
+                            });
+                        }
+                        
+                        return formatted;
+                    });
 
                     // Ordenar pontos pela ordem
                     pontosFormatados.sort((a, b) => a.ordem - b.ordem);
+                    
+                    console.log('Pontos formatados carregados para edição:', {
+                        quantidade: pontosFormatados.length,
+                        primeiroPonto: pontosFormatados[0],
+                        todos: pontosFormatados
+                    });
+                    
                     setPontosSelecionados(pontosFormatados);
 
                     // Centralizar mapa nos pontos da rota

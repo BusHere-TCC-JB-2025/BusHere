@@ -497,12 +497,12 @@ export const routeFormConfig = {
       placeholder: 'Selecione o veículo',
       required: false,
       size: 'lg',
-      loadOptions: () => api.buses.list(1, 100).then(response => {
-        const allBuses = response.data || [];
+      loadOptions: () => api.vehicles.list(1, 100).then(response => {
+        const allVehicles = response.data || [];
         // Filtrar apenas veículos ativos e em operação
-        return allBuses.filter(bus => 
-          (bus.ativo === true || bus.ativo === 1) && // ativo = true
-          (bus.status_nome === 'Em Operação') // status = "Em Operação"
+        return allVehicles.filter(vehicle => 
+          (vehicle.ativo === true || vehicle.ativo === 1) && // ativo = true
+          (vehicle.status_nome === 'Em Operação') // status = "Em Operação"
         );
       }),
       defaultOptions: [],

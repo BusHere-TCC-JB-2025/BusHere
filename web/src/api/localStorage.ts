@@ -91,6 +91,7 @@ interface Driver {
   email: string;
   data_admissao: string;
   status_motorista_id: DriverStatus;
+  ativo: boolean;
   criacao: string;
   atualizacao: string;
 }
@@ -108,6 +109,7 @@ interface Vehicle {
   data_proxima_manutencao: string;
   tipo_veiculo_id: VehicleType;
   status_veiculo_id: VehicleStatus;
+  ativo: boolean;
   criacao: string;
   atualizacao: string;
 }
@@ -195,6 +197,17 @@ interface PaginatedResponse<T> {
   pages: number;
 }
 
+interface VeiculoRota {
+  veiculo_rota_id: number;
+  rota_id: number;
+  veiculo_id: number;
+  motorista_id: number;
+  observacoes: string | null;
+  criacao: string;
+  atualizacao: string;
+  ativo: boolean;
+}
+
 interface Database {
   drivers: Driver[];
   vehicles: Vehicle[];
@@ -202,7 +215,10 @@ interface Database {
   routes: Route[];
   routeStops: RouteStop[];
   passengers: Passenger[];
+  assignments: VeiculoRota[];
   activityLog: Activity[];
+  notifications?: any[];
+  invites?: any[];
 }
 
 // ===== INITIAL DATA (from migration 100_insert_data_with_triggers.sql) =====
@@ -536,6 +552,7 @@ const INITIAL_DATA: Database = {
       ativo: true
     }
   ],
+  assignments: [],
   activityLog: []
 };
 
@@ -559,6 +576,10 @@ class LocalStorageDB {
     if (stored) {
       try {
         this.db = JSON.parse(stored);
+        // Migração: garantir que novas tabelas existam
+        if (!this.db.assignments) this.db.assignments = [];
+        if (!this.db.notifications) this.db.notifications = [];
+        if (!this.db.invites) this.db.invites = [];
       } catch (e) {
         this.db = JSON.parse(JSON.stringify(INITIAL_DATA));
         this.save();
@@ -1090,22 +1111,39 @@ class LocalStorageDB {
     if (!this.db.assignments) {
       this.db.assignments = [];
     }
-    return this.db.assignments.filter(a => a.rota_id === routeId);
+    const assignments = this.db.assignments.filter(a => a.rota_id === routeId);
+    
+    // Mapear campos para garantir compatibilidade com o frontend
+    const mappedAssignments = assignments.map(a => {
+      // Obter nomes para exibição
+      const driver = this.db.drivers.find(d => d.motorista_id === a.motorista_id);
+      const vehicle = this.db.vehicles.find(v => v.veiculo_id === a.veiculo_id);
+      
+      return {
+        ...a,
+        veiculo_rota_id: a.veiculo_rota_id || (a as any).escala_id,
+        motorista_nome: driver?.nome || 'Não informado',
+        motorista_cnh: driver?.cnh_numero || '',
+        veiculo_nome: vehicle?.nome || 'Não informado',
+        veiculo_placa: vehicle?.placa || '',
+        ativo: a.ativo !== false
+      };
+    });
+
+    return { data: mappedAssignments };
   }
 
   createAssignment(routeId: number, data: any) {
     if (!this.db.assignments) {
       this.db.assignments = [];
     }
-    const assignment = {
-      escala_id: Math.max(...this.db.assignments.map(a => a.escala_id || 0), 0) + 1,
+    const assignment: VeiculoRota = {
+      veiculo_rota_id: Math.max(...this.db.assignments.map(a => a.veiculo_rota_id || (a as any).escala_id || 0), 0) + 1,
       rota_id: routeId,
       motorista_id: data.motorista_id,
       veiculo_id: data.veiculo_id,
-      data_viagem: data.data_viagem,
-      horario_saida: data.horario_saida,
-      horario_chegada: data.horario_chegada,
-      status: data.status || 'planejada',
+      observacoes: data.observacoes || null,
+      ativo: true,
       criacao: getTimestamp(),
       atualizacao: getTimestamp()
     };
@@ -1119,9 +1157,10 @@ class LocalStorageDB {
       this.db.assignments = [];
     }
     const assignment = this.db.assignments.find(a => 
-      a.escala_id === assignmentId && a.rota_id === routeId
+      (a.veiculo_rota_id === assignmentId || (a as any).escala_id === assignmentId) && a.rota_id === routeId
     );
     if (!assignment) throw new Error(`Assignment ${assignmentId} not found`);
+    
     Object.assign(assignment, data, { atualizacao: getTimestamp() });
     this.save();
     return assignment;
@@ -1132,9 +1171,12 @@ class LocalStorageDB {
       this.db.assignments = [];
     }
     const index = this.db.assignments.findIndex(a =>
-      a.escala_id === assignmentId && a.rota_id === routeId
+      (a.veiculo_rota_id === assignmentId || (a as any).escala_id === assignmentId) && a.rota_id === routeId
     );
     if (index === -1) throw new Error(`Assignment ${assignmentId} not found`);
+    
+    // Em vez de deletar, podemos apenas desativar para manter histórico, 
+    // ou deletar como o original fazia
     this.db.assignments.splice(index, 1);
     this.save();
   }
