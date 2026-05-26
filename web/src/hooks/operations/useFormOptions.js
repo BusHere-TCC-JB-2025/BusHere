@@ -13,11 +13,33 @@ export const useVehicleOptions = () => {
     try {
       const response = await api.vehicles.list(1, 100);
       const allVehicles = response.data || [];
-      // Filtrar apenas veículos ativos e em operação
-      const filteredVehicles = allVehicles.filter(vehicle => 
-        (vehicle.ativo === true || vehicle.ativo === 1) && // ativo = true
-        (vehicle.status_nome === 'Em Operação') // status = "Em Operação"
-      );
+      console.log('Veículos carregados do API:', allVehicles);
+      
+      // Debug: Verificar campos de cada veículo
+      if (allVehicles.length > 0) {
+        console.log('Primeiro veículo completo:', JSON.stringify(allVehicles[0], null, 2));
+      }
+      
+      // Filtrar veículos: remover aqueles que têm ativo=false explicitamente
+      // Se não tiver status_veiculo_id ou ativo, incluir (compatibilidade)
+      const filteredVehicles = allVehicles.filter(vehicle => {
+        // Se tiver ativo=false, excluir
+        if (vehicle.ativo === false || vehicle.ativo === 0) {
+          console.log(`Veículo ${vehicle.nome}: EXCLUÍDO (ativo=false)`);
+          return false;
+        }
+        
+        // Se tiver status != 1 E o campo existir, excluir
+        if (vehicle.status_veiculo_id && vehicle.status_veiculo_id !== 1) {
+          console.log(`Veículo ${vehicle.nome}: EXCLUÍDO (status=${vehicle.status_veiculo_id})`);
+          return false;
+        }
+        
+        console.log(`Veículo ${vehicle.nome}: INCLUÍDO`);
+        return true;
+      });
+      
+      console.log('Veículos filtrados (final):', filteredVehicles);
       setOptions(filteredVehicles);
     } catch (err) {
       setError(err);
@@ -46,11 +68,33 @@ export const useDriverOptions = () => {
     try {
       const response = await api.drivers.list(1, 100);
       const allDrivers = response.data || [];
-      // Filtrar apenas motoristas ativos e com status "Ativo"
-      const filteredDrivers = allDrivers.filter(driver => 
-        (driver.ativo === true || driver.ativo === 1) && // ativo = true
-        (driver.status_nome === 'Ativo') // status = "Ativo"
-      );
+      console.log('Motoristas carregados do API:', allDrivers);
+      
+      // Debug: Verificar campos de cada motorista
+      if (allDrivers.length > 0) {
+        console.log('Primeiro motorista completo:', JSON.stringify(allDrivers[0], null, 2));
+      }
+      
+      // Filtrar motoristas: remover aqueles que têm ativo=false explicitamente
+      // Se não tiver status_motorista_id ou ativo, incluir (compatibilidade)
+      const filteredDrivers = allDrivers.filter(driver => {
+        // Se tiver ativo=false, excluir
+        if (driver.ativo === false || driver.ativo === 0) {
+          console.log(`Motorista ${driver.nome}: EXCLUÍDO (ativo=false)`);
+          return false;
+        }
+        
+        // Se tiver status != 1 E o campo existir, excluir
+        if (driver.status_motorista_id && driver.status_motorista_id !== 1) {
+          console.log(`Motorista ${driver.nome}: EXCLUÍDO (status=${driver.status_motorista_id})`);
+          return false;
+        }
+        
+        console.log(`Motorista ${driver.nome}: INCLUÍDO`);
+        return true;
+      });
+      
+      console.log('Motoristas filtrados (final):', filteredDrivers);
       setOptions(filteredDrivers);
     } catch (err) {
       setError(err);

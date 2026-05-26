@@ -40,6 +40,44 @@ enum PassengerType {
   CORPORATIVO = 2
 }
 
+// ===== HELPER FUNCTIONS FOR STATUS/TYPE NAMES =====
+const getDriverStatusName = (statusId: number): string => {
+  switch (statusId) {
+    case DriverStatus.ATIVO: return 'Ativo';
+    case DriverStatus.FERIAS: return 'Férias';
+    case DriverStatus.AFASTADO: return 'Afastado';
+    case DriverStatus.INATIVO: return 'Inativo';
+    default: return 'Não informado';
+  }
+};
+
+const getVehicleStatusName = (statusId: number): string => {
+  switch (statusId) {
+    case VehicleStatus.EM_OPERACAO: return 'Em Operação';
+    case VehicleStatus.EM_MANUTENCAO: return 'Em Manutenção';
+    case VehicleStatus.INATIVO: return 'Inativo';
+    default: return 'Não informado';
+  }
+};
+
+const getRouteStatusName = (statusId: number): string => {
+  switch (statusId) {
+    case RouteStatus.ATIVA: return 'Ativa';
+    case RouteStatus.INATIVA: return 'Inativa';
+    case RouteStatus.EM_PLANEJAMENTO: return 'Em Planejamento';
+    default: return 'Não informado';
+  }
+};
+
+const getVehicleTypeName = (typeId: number): string => {
+  switch (typeId) {
+    case VehicleType.ONIBUS: return 'Ônibus';
+    case VehicleType.MICROONIBUS: return 'Microônibus';
+    case VehicleType.VAN: return 'Van';
+    default: return 'Não informado';
+  }
+};
+
 // ===== TYPESCRIPT INTERFACES =====
 
 interface Driver {
@@ -182,6 +220,7 @@ const INITIAL_DATA: Database = {
       email: 'jose.silva@empresa.com',
       data_admissao: '2020-01-15',
       status_motorista_id: DriverStatus.ATIVO,
+      ativo: true,
       criacao: '2020-01-15T00:00:00.000Z',
       atualizacao: '2020-01-15T00:00:00.000Z'
     },
@@ -196,6 +235,7 @@ const INITIAL_DATA: Database = {
       email: 'maria.lima@empresa.com',
       data_admissao: '2019-03-10',
       status_motorista_id: DriverStatus.ATIVO,
+      ativo: true,
       criacao: '2019-03-10T00:00:00.000Z',
       atualizacao: '2019-03-10T00:00:00.000Z'
     },
@@ -210,6 +250,7 @@ const INITIAL_DATA: Database = {
       email: 'carlos.souza@empresa.com',
       data_admissao: '2021-06-01',
       status_motorista_id: DriverStatus.ATIVO,
+      ativo: true,
       criacao: '2021-06-01T00:00:00.000Z',
       atualizacao: '2021-06-01T00:00:00.000Z'
     },
@@ -224,6 +265,7 @@ const INITIAL_DATA: Database = {
       email: 'ana.costa@empresa.com',
       data_admissao: '2018-09-12',
       status_motorista_id: DriverStatus.FERIAS,
+      ativo: false,
       criacao: '2018-09-12T00:00:00.000Z',
       atualizacao: '2018-09-12T00:00:00.000Z'
     },
@@ -238,6 +280,7 @@ const INITIAL_DATA: Database = {
       email: 'roberto.santos@empresa.com',
       data_admissao: '2022-02-28',
       status_motorista_id: DriverStatus.ATIVO,
+      ativo: true,
       criacao: '2022-02-28T00:00:00.000Z',
       atualizacao: '2022-02-28T00:00:00.000Z'
     }
@@ -256,6 +299,7 @@ const INITIAL_DATA: Database = {
       data_proxima_manutencao: '2026-01-25',
       tipo_veiculo_id: VehicleType.MICROONIBUS,
       status_veiculo_id: VehicleStatus.EM_OPERACAO,
+      ativo: true,
       criacao: '2025-05-11T00:00:00.000Z',
       atualizacao: '2025-05-11T00:00:00.000Z'
     },
@@ -272,6 +316,7 @@ const INITIAL_DATA: Database = {
       data_proxima_manutencao: '2026-01-22',
       tipo_veiculo_id: VehicleType.VAN,
       status_veiculo_id: VehicleStatus.EM_MANUTENCAO,
+      ativo: false,
       criacao: '2025-06-13T00:00:00.000Z',
       atualizacao: '2025-06-13T00:00:00.000Z'
     },
@@ -288,6 +333,7 @@ const INITIAL_DATA: Database = {
       data_proxima_manutencao: '2025-10-22',
       tipo_veiculo_id: VehicleType.MICROONIBUS,
       status_veiculo_id: VehicleStatus.INATIVO,
+      ativo: false,
       criacao: '2024-12-24T00:00:00.000Z',
       atualizacao: '2024-12-24T00:00:00.000Z'
     }
@@ -726,8 +772,12 @@ class LocalStorageDB {
     this.save();
   }
 
-  getRouteStops(routeId: number): RouteStop[] {
-    return this.db.routeStops.filter(rs => rs.rota_id === routeId);
+  getRouteStops(routeId: number): Stop[] {
+    const routeStops = this.db.routeStops.filter(rs => rs.rota_id === routeId);
+    return routeStops
+      .sort((a, b) => a.ordem - b.ordem)
+      .map(rs => this.db.stops.find(s => s.ponto_id === rs.ponto_id))
+      .filter(s => s !== undefined) as Stop[];
   }
 
   getRouteByIdWithStops(id: number) {
@@ -741,7 +791,7 @@ class LocalStorageDB {
 
     return {
       ...route,
-      stopsData,
+      pontos: stopsData,
     };
   }
 
@@ -1092,18 +1142,86 @@ class LocalStorageDB {
 
   // ===== REPORTS =====
   getCharts() {
+    // Passageiros por cidade
+    const passengersByCity = this.db.passengers.reduce((acc, p) => {
+      const city = p.cidade || 'Não informado';
+      const existing = acc.find(item => item.label === city);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: city, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
+    // Veículos por status
+    const vehiclesByStatus = this.db.vehicles.reduce((acc, v) => {
+      const status = getVehicleStatusName(v.status_veiculo_id);
+      const existing = acc.find(item => item.label === status);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: status, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
+    // Veículos por tipo
+    const vehiclesByType = this.db.vehicles.reduce((acc, v) => {
+      const type = getVehicleTypeName(v.tipo_veiculo_id);
+      const existing = acc.find(item => item.label === type);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: type, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
+    // Pontos por cidade
+    const stopsByCity = this.db.stops.reduce((acc, s) => {
+      const city = s.cidade || 'Não informado';
+      const existing = acc.find(item => item.label === city);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: city, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
+    // Rotas por status
+    const routesByStatus = this.db.routes.reduce((acc, r) => {
+      const status = getRouteStatusName(r.status_rota_id);
+      const existing = acc.find(item => item.label === status);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: status, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
+    // Motoristas por status
+    const driversByStatus = this.db.drivers.reduce((acc, d) => {
+      const status = getDriverStatusName(d.status_motorista_id);
+      const existing = acc.find(item => item.label === status);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ label: status, value: 1 });
+      }
+      return acc;
+    }, [] as Array<{ label: string; value: number }>);
+
     return {
       data: {
-        passengersPerRoute: this.db.passengers.reduce((acc, p) => {
-          const key = p.rota_id || 'unassigned';
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {} as Record<number | string, number>),
-        driversPerRoute: this.db.routes.map(r => ({
-          routeId: r.rota_id,
-          routeName: r.nome,
-          drivers: (this.db.assignments || []).filter(a => a.rota_id === r.rota_id).length
-        }))
+        passengersByCity,
+        vehiclesByStatus,
+        vehiclesByType,
+        stopsByCity,
+        routesByStatus,
+        driversByStatus
       }
     };
   }
