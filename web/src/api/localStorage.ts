@@ -755,7 +755,34 @@ class LocalStorageDB {
     const total = filtered.length;
     const pages = Math.ceil(total / limit);
     const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
+    const data = filtered.slice(start, start + limit).map(route => {
+      // Buscar associação ativa para esta rota
+      const assignments = this.db.assignments || [];
+      const activeAssignment = assignments.find(a => a.rota_id === route.rota_id && a.ativo !== false);
+      
+      let driverName = null;
+      let driverCnh = null;
+      let vehicleName = null;
+      let vehiclePlaca = null;
+
+      if (activeAssignment) {
+        const driver = this.db.drivers.find(d => d.motorista_id === activeAssignment.motorista_id);
+        const vehicle = this.db.vehicles.find(v => v.veiculo_id === activeAssignment.veiculo_id);
+        
+        driverName = driver?.nome || null;
+        driverCnh = driver?.cnh_numero || null;
+        vehicleName = vehicle?.nome || null;
+        vehiclePlaca = vehicle?.placa || null;
+      }
+
+      return {
+        ...route,
+        motorista_nome: driverName,
+        motorista_cnh: driverCnh,
+        veiculo_nome: vehicleName,
+        veiculo_placa: vehiclePlaca
+      };
+    });
 
     return { data, total, page, limit, pages };
   }
@@ -832,7 +859,17 @@ class LocalStorageDB {
     const total = filtered.length;
     const pages = Math.ceil(total / limit);
     const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
+    const data = filtered.slice(start, start + limit).map(passenger => {
+      const route = this.db.routes.find(r => r.rota_id === passenger.rota_id);
+      const stop = this.db.stops.find(s => s.ponto_id === passenger.ponto_id);
+      
+      return {
+        ...passenger,
+        nome: passenger.nome_completo, // Frontend às vezes usa .nome
+        rota_nome: route?.nome || null,
+        ponto_nome: stop?.nome || null
+      };
+    });
 
     return { data, total, page, limit, pages };
   }
